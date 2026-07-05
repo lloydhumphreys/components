@@ -1,0 +1,28 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "lloydhumphreys",
+  "homepage": "https://github.com/lloydhumphreys/components",
+  "items": [
+    {
+      "name": "scroll-rail",
+      "type": "registry:component",
+      "title": "Scroll Rail",
+      "description": "A dependency-free scroll-position navigation rail: a compact column of ticks pinned to one edge of a scroll container, one per stop, with hover previews and click-to-scroll. Ships a framework-agnostic vanilla core plus a React wrapper.",
+      "author": "Lloyd Humphreys",
+      "dependencies": [],
+      "registryDependencies": [],
+      "files": [
+        {
+          "path": "registry/scroll-rail/scroll-rail.ts",
+          "type": "registry:lib",
+          "target": "components/scroll-rail/scroll-rail.ts"
+        },
+        {
+          "path": "registry/scroll-rail/scroll-rail-react.tsx",
+          "type": "registry:component",
+          "target": "components/scroll-rail/scroll-rail-react.tsx"
+        }
+      ]
+    }
+  ]
+}

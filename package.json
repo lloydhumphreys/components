@@ -1,0 +1,13 @@
+{
+  "name": "@lloydhumphreys/components",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A shadcn-compatible component registry.",
+  "type": "module",
+  "scripts": {
+    "registry:build": "shadcn build"
+  },
+  "devDependencies": {
+    "shadcn": "^4.13.0"
+  }
+}
