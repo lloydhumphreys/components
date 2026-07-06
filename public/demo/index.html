@@ -240,8 +240,8 @@
 
         <h2>Click to navigate</h2>
         <p>Clicking a tick — or the gap next to it — smooth-scrolls the stop's target into view.
-           The rail also brightens briefly whenever you scroll or navigate, a small wake-on-scroll
-           cue that fades back to half opacity when things settle.</p>
+           The rail rests at half opacity and brightens only while you're actually pointing at
+           it, fading back the moment you stop hovering.</p>
 
         <h1>Theming</h1>
         <p>The rail ships with styles that read correctly in light and dark without configuration,
@@ -320,7 +320,7 @@ frame.appendChild(rail.element)</code></pre>
 </div>
 
 <!-- Bump ?v= whenever the bundle changes: GitHub Pages caches for 10 minutes. -->
-<script src="./scroll-rail.js?v=2"></script>
+<script src="./scroll-rail.js?v=3"></script>
 <script>
   const { createScrollRail, headingItems } = ScrollRail
 

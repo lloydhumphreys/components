@@ -162,19 +162,6 @@ export function createScrollRail(opts: ScrollRailOptions): ScrollRail {
   let items: ScrollRailItem[] = []
   let ticks: HTMLButtonElement[] = []
 
-  let emphTimer: ReturnType<typeof setTimeout> | undefined
-  const emphasize = () => {
-    nav.classList.add('is-emphasised')
-    if (emphTimer) clearTimeout(emphTimer)
-    emphTimer = setTimeout(() => nav.classList.remove('is-emphasised'), 1400)
-  }
-  // Drop the emphasis right away (rather than letting the 1400ms timer run out) — used when
-  // the pointer leaves the rail, so it dims as soon as you stop hovering.
-  const calm = () => {
-    if (emphTimer) clearTimeout(emphTimer)
-    nav.classList.remove('is-emphasised')
-  }
-
   const showCard = (i: number) => {
     const it = items[i]
     if (!it) return
@@ -203,7 +190,6 @@ export function createScrollRail(opts: ScrollRailOptions): ScrollRail {
       card.style.transition = ''
       card.classList.add('is-visible')
     }
-    emphasize()
   }
   const hideCard = () => card.classList.remove('is-visible')
 
@@ -223,7 +209,6 @@ export function createScrollRail(opts: ScrollRailOptions): ScrollRail {
       showCard(i)
     } else {
       hideCard()
-      calm()
     }
   }
   const nearestTick = (clientY: number): number => {
@@ -268,7 +253,6 @@ export function createScrollRail(opts: ScrollRailOptions): ScrollRail {
     const margin = parseFloat(getComputedStyle(it.target).scrollMarginTop) || 0
     const top = it.target.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop - margin
     c.scrollTo({ top, behavior: 'smooth' })
-    emphasize()
   }
   // A click anywhere in the rail navigates to the nearest tick — clicking the gaps works
   // like clicking the ticks. Clicks that land on a tick are left to its own handler (which
@@ -291,12 +275,9 @@ export function createScrollRail(opts: ScrollRailOptions): ScrollRail {
     scrollContainer: opts.scrollContainer,
     items: opts.items,
     activationOffset: opts.activationOffset,
-    onActiveChange: (id) => { paintActive(id); opts.onActiveChange?.(id); emphasize() },
+    onActiveChange: (id) => { paintActive(id); opts.onActiveChange?.(id) },
   })
 
-  // Brighten the rail on scroll too (then fade) — a subtle "wake on scroll" cue.
-  const onScroll = () => emphasize()
-  opts.scrollContainer.addEventListener('scroll', onScroll, { passive: true })
   // Capture-phase so it fires for any scroller (the page, the container, anything between).
   document.addEventListener('scroll', revalidateHover, { capture: true, passive: true })
 
@@ -335,13 +316,11 @@ export function createScrollRail(opts: ScrollRailOptions): ScrollRail {
     refresh: () => { observer.refresh(); paintActive(observer.getActiveId()) },
     destroy() {
       observer.destroy()
-      opts.scrollContainer.removeEventListener('scroll', onScroll)
       document.removeEventListener('scroll', revalidateHover, { capture: true })
       nav.removeEventListener('pointermove', onPointerMove)
       nav.removeEventListener('pointerleave', onPointerLeave)
       nav.removeEventListener('focusout', onFocusOut)
       nav.removeEventListener('click', onClick)
-      if (emphTimer) clearTimeout(emphTimer)
     },
   }
 }
@@ -436,7 +415,7 @@ export function railStyles(): string {
 /* Brightening is driven by the .is-hover class (set from pointer events + revalidated on
    scroll) rather than :hover — Safari leaves :hover stuck when the page scrolls the rail
    out from under a stationary cursor. */
-.scroll-rail.is-hover, .scroll-rail.is-emphasised { opacity: 1; }
+.scroll-rail.is-hover { opacity: 1; }
 .scroll-rail--right { right: 0; }
 .scroll-rail--left { left: 0; }
 .scroll-rail-track {

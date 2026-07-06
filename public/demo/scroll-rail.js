@@ -84,16 +84,6 @@ var ScrollRail = (() => {
     nav.appendChild(card);
     let items = [];
     let ticks = [];
-    let emphTimer;
-    const emphasize = () => {
-      nav.classList.add("is-emphasised");
-      if (emphTimer) clearTimeout(emphTimer);
-      emphTimer = setTimeout(() => nav.classList.remove("is-emphasised"), 1400);
-    };
-    const calm = () => {
-      if (emphTimer) clearTimeout(emphTimer);
-      nav.classList.remove("is-emphasised");
-    };
     const showCard = (i) => {
       const it = items[i];
       if (!it) return;
@@ -120,7 +110,6 @@ var ScrollRail = (() => {
         card.style.transition = "";
         card.classList.add("is-visible");
       }
-      emphasize();
     };
     const hideCard = () => card.classList.remove("is-visible");
     let hoveredIndex = -1;
@@ -135,7 +124,6 @@ var ScrollRail = (() => {
         showCard(i);
       } else {
         hideCard();
-        calm();
       }
     };
     const nearestTick = (clientY) => {
@@ -178,7 +166,6 @@ var ScrollRail = (() => {
       const margin = parseFloat(getComputedStyle(it.target).scrollMarginTop) || 0;
       const top = it.target.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop - margin;
       c.scrollTo({ top, behavior: "smooth" });
-      emphasize();
     };
     const onClick = (e) => {
       if (e.target?.closest(".scroll-rail-tick")) return;
@@ -199,11 +186,8 @@ var ScrollRail = (() => {
       onActiveChange: (id) => {
         paintActive(id);
         opts.onActiveChange?.(id);
-        emphasize();
       }
     });
-    const onScroll = () => emphasize();
-    opts.scrollContainer.addEventListener("scroll", onScroll, { passive: true });
     document.addEventListener("scroll", revalidateHover, { capture: true, passive: true });
     const buildTicks = () => {
       track.replaceChildren();
@@ -239,13 +223,11 @@ var ScrollRail = (() => {
       },
       destroy() {
         observer.destroy();
-        opts.scrollContainer.removeEventListener("scroll", onScroll);
         document.removeEventListener("scroll", revalidateHover, { capture: true });
         nav.removeEventListener("pointermove", onPointerMove);
         nav.removeEventListener("pointerleave", onPointerLeave);
         nav.removeEventListener("focusout", onFocusOut);
         nav.removeEventListener("click", onClick);
-        if (emphTimer) clearTimeout(emphTimer);
       }
     };
   }
@@ -320,7 +302,7 @@ var ScrollRail = (() => {
 /* Brightening is driven by the .is-hover class (set from pointer events + revalidated on
    scroll) rather than :hover \u2014 Safari leaves :hover stuck when the page scrolls the rail
    out from under a stationary cursor. */
-.scroll-rail.is-hover, .scroll-rail.is-emphasised { opacity: 1; }
+.scroll-rail.is-hover { opacity: 1; }
 .scroll-rail--right { right: 0; }
 .scroll-rail--left { left: 0; }
 .scroll-rail-track {
