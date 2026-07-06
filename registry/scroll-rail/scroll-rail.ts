@@ -206,10 +206,12 @@ export function createScrollRail(opts: ScrollRailOptions): ScrollRail {
   // drop the hover), and the preview card glides between ticks instead of blinking off and
   // on. `hoveredIndex` is the currently engaged tick (-1 for none).
   let hoveredIndex = -1
+  let lastPointer: { x: number; y: number } | null = null
   const setHovered = (i: number) => {
     if (i === hoveredIndex) return
     if (hoveredIndex >= 0) ticks[hoveredIndex]?.classList.remove('is-hovered')
     hoveredIndex = i
+    nav.classList.toggle('is-hover', i >= 0)
     if (i >= 0) {
       ticks[i]?.classList.add('is-hovered')
       showCard(i)
@@ -227,18 +229,38 @@ export function createScrollRail(opts: ScrollRailOptions): ScrollRail {
     }
     return best
   }
-  const onPointerMove = (e: PointerEvent) => { if (ticks.length) setHovered(nearestTick(e.clientY)) }
-  const onPointerLeave = () => setHovered(-1)
+  const onPointerMove = (e: PointerEvent) => {
+    lastPointer = { x: e.clientX, y: e.clientY }
+    if (ticks.length) setHovered(nearestTick(e.clientY))
+  }
+  const onPointerLeave = () => { lastPointer = null; setHovered(-1) }
+  // A scroll can move the rail out from under a stationary cursor (the page scrolling while
+  // the pointer rests on the rail). No pointer event fires for that, so hover state would
+  // strand until the next real mouse move — re-check the last known pointer position against
+  // the rail's current rect whenever anything scrolls.
+  const revalidateHover = () => {
+    if (!lastPointer) return
+    const r = nav.getBoundingClientRect()
+    const inside = lastPointer.x >= r.left && lastPointer.x <= r.right
+      && lastPointer.y >= r.top && lastPointer.y <= r.bottom
+    if (!inside) { lastPointer = null; setHovered(-1) }
+    else if (ticks.length) setHovered(nearestTick(lastPointer.y))
+  }
   // Keyboard: focusing a tick engages it; clear only when focus leaves the rail entirely
   // (so Tabbing between ticks doesn't flicker the card).
   const onFocusOut = (e: FocusEvent) => {
     if (!nav.contains(e.relatedTarget as Node | null)) setHovered(-1)
   }
-  // Navigate to a stop (scroll its target into view).
+  // Navigate to a stop. Scrolls only the configured container — scrollIntoView would also
+  // scroll every other scrollable ancestor (the page itself lurches, and the rail slides out
+  // from under the cursor). Respects the target's scroll-margin-top like scrollIntoView does.
   const go = (i: number) => {
     const it = items[i]
     if (!it) return
-    it.target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    const c = opts.scrollContainer
+    const margin = parseFloat(getComputedStyle(it.target).scrollMarginTop) || 0
+    const top = it.target.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop - margin
+    c.scrollTo({ top, behavior: 'smooth' })
     emphasize()
   }
   // A click anywhere in the rail navigates to the nearest tick — clicking the gaps works
@@ -268,6 +290,8 @@ export function createScrollRail(opts: ScrollRailOptions): ScrollRail {
   // Brighten the rail on scroll too (then fade) — a subtle "wake on scroll" cue.
   const onScroll = () => emphasize()
   opts.scrollContainer.addEventListener('scroll', onScroll, { passive: true })
+  // Capture-phase so it fires for any scroller (the page, the container, anything between).
+  document.addEventListener('scroll', revalidateHover, { capture: true, passive: true })
 
   const buildTicks = () => {
     track.replaceChildren()
@@ -305,6 +329,7 @@ export function createScrollRail(opts: ScrollRailOptions): ScrollRail {
     destroy() {
       observer.destroy()
       opts.scrollContainer.removeEventListener('scroll', onScroll)
+      document.removeEventListener('scroll', revalidateHover, { capture: true })
       nav.removeEventListener('pointermove', onPointerMove)
       nav.removeEventListener('pointerleave', onPointerLeave)
       nav.removeEventListener('focusout', onFocusOut)
@@ -401,7 +426,10 @@ export function railStyles(): string {
      and navigation apply across it — not just on the 2px ticks. */
   cursor: pointer;
 }
-.scroll-rail:hover, .scroll-rail.is-emphasised { opacity: 1; }
+/* Brightening is driven by the .is-hover class (set from pointer events + revalidated on
+   scroll) rather than :hover — Safari leaves :hover stuck when the page scrolls the rail
+   out from under a stationary cursor. */
+.scroll-rail.is-hover, .scroll-rail.is-emphasised { opacity: 1; }
 .scroll-rail--right { right: 0; }
 .scroll-rail--left { left: 0; }
 .scroll-rail-track {
@@ -424,8 +452,9 @@ export function railStyles(): string {
 .scroll-rail-tick[data-level="3"] { width: 8px; }
 .scroll-rail-tick[data-level="4"] { width: 6px; }
 /* .is-hovered is set (via pointermove) on the tick nearest the cursor anywhere in the rail,
-   so hover doesn't drop out in the gaps between ticks. */
-.scroll-rail-tick:hover, .scroll-rail-tick:focus-visible, .scroll-rail-tick.is-hovered {
+   so hover doesn't drop out in the gaps between ticks. Tick :hover is deliberately unused —
+   .is-hovered covers it and, unlike :hover, can't strand on scroll-under-cursor. */
+.scroll-rail-tick:focus-visible, .scroll-rail-tick.is-hovered {
   width: 24px; opacity: 1; outline: none;
 }
 /* A colored node keeps its own color when active; uncolored ones use the accent. */

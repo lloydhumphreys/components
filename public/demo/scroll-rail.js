@@ -120,10 +120,12 @@ var ScrollRail = (() => {
     };
     const hideCard = () => card.classList.remove("is-visible");
     let hoveredIndex = -1;
+    let lastPointer = null;
     const setHovered = (i) => {
       if (i === hoveredIndex) return;
       if (hoveredIndex >= 0) ticks[hoveredIndex]?.classList.remove("is-hovered");
       hoveredIndex = i;
+      nav.classList.toggle("is-hover", i >= 0);
       if (i >= 0) {
         ticks[i]?.classList.add("is-hovered");
         showCard(i);
@@ -145,16 +147,32 @@ var ScrollRail = (() => {
       return best;
     };
     const onPointerMove = (e) => {
+      lastPointer = { x: e.clientX, y: e.clientY };
       if (ticks.length) setHovered(nearestTick(e.clientY));
     };
-    const onPointerLeave = () => setHovered(-1);
+    const onPointerLeave = () => {
+      lastPointer = null;
+      setHovered(-1);
+    };
+    const revalidateHover = () => {
+      if (!lastPointer) return;
+      const r = nav.getBoundingClientRect();
+      const inside = lastPointer.x >= r.left && lastPointer.x <= r.right && lastPointer.y >= r.top && lastPointer.y <= r.bottom;
+      if (!inside) {
+        lastPointer = null;
+        setHovered(-1);
+      } else if (ticks.length) setHovered(nearestTick(lastPointer.y));
+    };
     const onFocusOut = (e) => {
       if (!nav.contains(e.relatedTarget)) setHovered(-1);
     };
     const go = (i) => {
       const it = items[i];
       if (!it) return;
-      it.target.scrollIntoView({ behavior: "smooth", block: "start" });
+      const c = opts.scrollContainer;
+      const margin = parseFloat(getComputedStyle(it.target).scrollMarginTop) || 0;
+      const top = it.target.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop - margin;
+      c.scrollTo({ top, behavior: "smooth" });
       emphasize();
     };
     const onClick = (e) => {
@@ -181,6 +199,7 @@ var ScrollRail = (() => {
     });
     const onScroll = () => emphasize();
     opts.scrollContainer.addEventListener("scroll", onScroll, { passive: true });
+    document.addEventListener("scroll", revalidateHover, { capture: true, passive: true });
     const buildTicks = () => {
       track.replaceChildren();
       ticks = items.map((it, i) => {
@@ -216,6 +235,7 @@ var ScrollRail = (() => {
       destroy() {
         observer.destroy();
         opts.scrollContainer.removeEventListener("scroll", onScroll);
+        document.removeEventListener("scroll", revalidateHover, { capture: true });
         nav.removeEventListener("pointermove", onPointerMove);
         nav.removeEventListener("pointerleave", onPointerLeave);
         nav.removeEventListener("focusout", onFocusOut);
@@ -292,7 +312,10 @@ var ScrollRail = (() => {
      and navigation apply across it \u2014 not just on the 2px ticks. */
   cursor: pointer;
 }
-.scroll-rail:hover, .scroll-rail.is-emphasised { opacity: 1; }
+/* Brightening is driven by the .is-hover class (set from pointer events + revalidated on
+   scroll) rather than :hover \u2014 Safari leaves :hover stuck when the page scrolls the rail
+   out from under a stationary cursor. */
+.scroll-rail.is-hover, .scroll-rail.is-emphasised { opacity: 1; }
 .scroll-rail--right { right: 0; }
 .scroll-rail--left { left: 0; }
 .scroll-rail-track {
@@ -315,8 +338,9 @@ var ScrollRail = (() => {
 .scroll-rail-tick[data-level="3"] { width: 8px; }
 .scroll-rail-tick[data-level="4"] { width: 6px; }
 /* .is-hovered is set (via pointermove) on the tick nearest the cursor anywhere in the rail,
-   so hover doesn't drop out in the gaps between ticks. */
-.scroll-rail-tick:hover, .scroll-rail-tick:focus-visible, .scroll-rail-tick.is-hovered {
+   so hover doesn't drop out in the gaps between ticks. Tick :hover is deliberately unused \u2014
+   .is-hovered covers it and, unlike :hover, can't strand on scroll-under-cursor. */
+.scroll-rail-tick:focus-visible, .scroll-rail-tick.is-hovered {
   width: 24px; opacity: 1; outline: none;
 }
 /* A colored node keeps its own color when active; uncolored ones use the accent. */
