@@ -168,6 +168,12 @@ export function createScrollRail(opts: ScrollRailOptions): ScrollRail {
     if (emphTimer) clearTimeout(emphTimer)
     emphTimer = setTimeout(() => nav.classList.remove('is-emphasised'), 1400)
   }
+  // Drop the emphasis right away (rather than letting the 1400ms timer run out) — used when
+  // the pointer leaves the rail, so it dims as soon as you stop hovering.
+  const calm = () => {
+    if (emphTimer) clearTimeout(emphTimer)
+    nav.classList.remove('is-emphasised')
+  }
 
   const showCard = (i: number) => {
     const it = items[i]
@@ -217,6 +223,7 @@ export function createScrollRail(opts: ScrollRailOptions): ScrollRail {
       showCard(i)
     } else {
       hideCard()
+      calm()
     }
   }
   const nearestTick = (clientY: number): number => {

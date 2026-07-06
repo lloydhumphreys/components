@@ -90,6 +90,10 @@ var ScrollRail = (() => {
       if (emphTimer) clearTimeout(emphTimer);
       emphTimer = setTimeout(() => nav.classList.remove("is-emphasised"), 1400);
     };
+    const calm = () => {
+      if (emphTimer) clearTimeout(emphTimer);
+      nav.classList.remove("is-emphasised");
+    };
     const showCard = (i) => {
       const it = items[i];
       if (!it) return;
@@ -131,6 +135,7 @@ var ScrollRail = (() => {
         showCard(i);
       } else {
         hideCard();
+        calm();
       }
     };
     const nearestTick = (clientY) => {
