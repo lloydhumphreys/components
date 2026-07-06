@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@lloydhumphreys/components</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    margin: 0;
+    display: grid;
+    place-items: center;
+    min-height: 100vh;
+    background: light-dark(#fafafa, #131316);
+    color: light-dark(#1b1b1f, #e7e7ec);
+    font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 560px; padding: 24px; }
+  h1 { font-size: 24px; margin: 0 0 6px; letter-spacing: -0.02em; }
+  p { color: light-dark(#6b6b76, #9a9aa5); margin: 0 0 20px; }
+  ul { list-style: none; padding: 0; margin: 0; }
+  li {
+    border: 1px solid light-dark(#e2e2e8, #2c2c33);
+    background: light-dark(#ffffff, #1b1b20);
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 10px;
+  }
+  li b { font-size: 15px; }
+  li p { margin: 4px 0 8px; font-size: 13.5px; }
+  a { color: #3b82f6; text-decoration: none; font-size: 13.5px; }
+  a:hover { text-decoration: underline; }
+  code {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 12.5px;
+    background: light-dark(#f1f1f4, #232329);
+    border: 1px solid light-dark(#e2e2e8, #2c2c33);
+    border-radius: 6px;
+    padding: 2px 7px;
+  }
+  footer { margin-top: 20px; font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>@lloydhumphreys/components</h1>
+  <p>A shadcn-compatible component registry.</p>
+  <ul>
+    <li>
+      <b>scroll-rail</b>
+      <p>A dependency-free scroll-position navigation rail: ticks pinned to one edge of a
+         scroll container, with hover previews and click-to-scroll.</p>
+      <a href="./demo/">Demo</a> ·
+      <a href="./r/scroll-rail.json">Registry JSON</a><br><br>
+      <code>npx shadcn@latest add https://lloydhumphreys.github.io/components/r/scroll-rail.json</code>
+    </li>
+  </ul>
+  <footer><a href="https://github.com/lloydhumphreys/components">github.com/lloydhumphreys/components</a></footer>
+</main>
+</body>
+</html>
