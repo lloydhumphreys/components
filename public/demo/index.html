@@ -105,7 +105,13 @@
     font-weight: 600;
   }
   .active-readout {
-    margin-left: auto;
+    /* Take the rest of the row and truncate — never wrap (a wrap jumps the demo frame down). */
+    flex: 1 1 0;
+    min-width: 0;
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     color: var(--muted);
     font-variant-numeric: tabular-nums;
   }
