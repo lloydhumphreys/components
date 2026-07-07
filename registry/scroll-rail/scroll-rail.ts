@@ -420,13 +420,13 @@ export function railStyles(): string {
 .scroll-rail--left { left: 0; }
 .scroll-rail-track {
   display: flex; flex-direction: column; justify-content: center;
-  gap: 7px; max-height: 100%; padding: 12px 10px;
+  gap: 4px; max-height: 100%; padding: 12px 10px;
 }
 .scroll-rail--right .scroll-rail-track { align-items: flex-end; }
 .scroll-rail--left .scroll-rail-track { align-items: flex-start; }
 .scroll-rail-tick {
   appearance: none; -webkit-appearance: none; border: 0; margin: 0; padding: 0;
-  cursor: pointer; height: 2px; width: 18px; border-radius: 2px;
+  cursor: pointer; height: 2px; width: 12px;
   /* Buttons don't inherit color by default, so inherit it explicitly — that's what makes
      currentColor (and thus --rail-tick) actually reach the ticks. */
   color: inherit;
@@ -434,17 +434,17 @@ export function railStyles(): string {
   background: var(--tick, currentColor); opacity: 0.55;
   transition: width 0.22s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s ease, background-color 0.22s ease;
 }
-.scroll-rail-tick[data-level="2"] { width: 12px; }
-.scroll-rail-tick[data-level="3"] { width: 8px; }
-.scroll-rail-tick[data-level="4"] { width: 6px; }
+.scroll-rail-tick[data-level="2"] { width: 9px; }
+.scroll-rail-tick[data-level="3"] { width: 6px; }
+.scroll-rail-tick[data-level="4"] { width: 4px; }
 /* .is-hovered is set (via pointermove) on the tick nearest the cursor anywhere in the rail,
    so hover doesn't drop out in the gaps between ticks. Tick :hover is deliberately unused —
    .is-hovered covers it and, unlike :hover, can't strand on scroll-under-cursor. */
 .scroll-rail-tick:focus-visible, .scroll-rail-tick.is-hovered {
-  width: 24px; opacity: 1; outline: none;
+  width: 16px; opacity: 1; outline: none;
 }
 /* A colored node keeps its own color when active; uncolored ones use the accent. */
-.scroll-rail-tick.is-active { width: 24px; opacity: 1; background: var(--tick, var(--rail-accent, #3b82f6)); }
+.scroll-rail-tick.is-active { width: 16px; opacity: 1; background: var(--tick, var(--rail-accent, #3b82f6)); }
 .scroll-rail-card {
   position: absolute; z-index: 10; box-sizing: border-box;
   width: var(--rail-card-width, 234px); max-width: var(--rail-card-width, 234px);
