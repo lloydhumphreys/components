@@ -437,14 +437,23 @@ export function railStyles(): string {
 .scroll-rail-tick[data-level="2"] { width: 9px; }
 .scroll-rail-tick[data-level="3"] { width: 6px; }
 .scroll-rail-tick[data-level="4"] { width: 4px; }
+/* The whole column swells while the rail is hovered — every tick scales up ~1.5×… */
+.scroll-rail.is-hover .scroll-rail-tick { width: 18px; }
+.scroll-rail.is-hover .scroll-rail-tick[data-level="2"] { width: 13px; }
+.scroll-rail.is-hover .scroll-rail-tick[data-level="3"] { width: 9px; }
+.scroll-rail.is-hover .scroll-rail-tick[data-level="4"] { width: 6px; }
 /* .is-hovered is set (via pointermove) on the tick nearest the cursor anywhere in the rail,
    so hover doesn't drop out in the gaps between ticks. Tick :hover is deliberately unused —
    .is-hovered covers it and, unlike :hover, can't strand on scroll-under-cursor. */
-.scroll-rail-tick:focus-visible, .scroll-rail-tick.is-hovered {
-  width: 16px; opacity: 1; outline: none;
-}
+.scroll-rail-tick:focus-visible, .scroll-rail-tick.is-hovered { opacity: 1; outline: none; }
 /* A colored node keeps its own color when active; uncolored ones use the accent. */
 .scroll-rail-tick.is-active { width: 16px; opacity: 1; background: var(--tick, var(--rail-accent, #3b82f6)); }
+/* …and the engaged/active tick rises above the scaled-up baseline. Engaging a tick always
+   puts .is-hover on the rail too, so these rules cover the keyboard-focus path as well.
+   (Same specificity as the level rules above — order matters.) */
+.scroll-rail.is-hover .scroll-rail-tick:focus-visible,
+.scroll-rail.is-hover .scroll-rail-tick.is-hovered,
+.scroll-rail.is-hover .scroll-rail-tick.is-active { width: 22px; }
 .scroll-rail-card {
   position: absolute; z-index: 10; box-sizing: border-box;
   width: var(--rail-card-width, 234px); max-width: var(--rail-card-width, 234px);
