@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>scroll-rail — demo</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fafafa;
+    --fg: #1b1b1f;
+    --muted: #6b6b76;
+    --border: #e2e2e8;
+    --panel: #ffffff;
+    --code-bg: #f1f1f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #131316;
+      --fg: #e7e7ec;
+      --muted: #9a9aa5;
+      --border: #2c2c33;
+      --panel: #1b1b20;
+      --code-bg: #232329;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #131316;
+    --fg: #e7e7ec;
+    --muted: #9a9aa5;
+    --border: #2c2c33;
+    --panel: #1b1b20;
+    --code-bg: #232329;
+  }
+  :root[data-theme="light"] { color-scheme: light; }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .page {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 40px 24px 64px;
+  }
+  .masthead h1 {
+    margin: 0;
+    font-size: 26px;
+    letter-spacing: -0.02em;
+  }
+  .masthead p {
+    margin: 8px 0 0;
+    color: var(--muted);
+    max-width: 60ch;
+  }
+  .masthead code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px 7px;
+    font-size: 13px;
+  }
+  .install {
+    margin-top: 14px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 20px;
+    margin: 28px 0 12px;
+    font-size: 13px;
+  }
+  .control { display: flex; align-items: center; gap: 8px; }
+  .control > span { color: var(--muted); }
+  .seg {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--panel);
+  }
+  .seg button {
+    appearance: none;
+    border: 0;
+    margin: 0;
+    padding: 5px 12px;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .seg button + button { border-left: 1px solid var(--border); }
+  .seg button[aria-pressed="true"] {
+    background: var(--code-bg);
+    color: var(--fg);
+    font-weight: 600;
+  }
+  .active-readout {
+    /* Take the rest of the row and truncate — never wrap (a wrap jumps the demo frame down). */
+    flex: 1 1 0;
+    min-width: 0;
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .active-readout b { color: var(--fg); font-weight: 600; }
+
+  /* The positioned box the rail pins itself to — it wraps the scroller exactly. */
+  .doc-frame { position: relative; }
+  .doc-scroll {
+    height: min(72vh, 640px);
+    overflow-y: auto;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+  }
+  .doc-scroll article {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 40px 48px 96px;
+  }
+  article .doc-title { font-size: 28px; margin: 0 0 4px; letter-spacing: -0.02em; }
+  article .doc-sub { color: var(--muted); margin: 0 0 28px; }
+  article h1 { font-size: 21px; margin: 44px 0 10px; letter-spacing: -0.01em; }
+  article h2 { font-size: 16px; margin: 30px 0 8px; }
+  article h3 { font-size: 14px; margin: 22px 0 6px; }
+  article p { margin: 0 0 12px; color: color-mix(in srgb, var(--fg) 88%, transparent); }
+  article pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    overflow-x: auto;
+    font-size: 12.5px;
+    line-height: 1.55;
+  }
+  article code { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+
+  footer {
+    margin-top: 20px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  footer a { color: inherit; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="masthead">
+    <h1>scroll-rail</h1>
+    <p>A dependency-free scroll-position navigation rail: a compact column of ticks pinned to
+       one edge of a scroll container, one per stop, with hover previews and click-to-scroll.</p>
+    <p class="install">Install: <code>npx shadcn@latest add @lloydhumphreys/scroll-rail</code></p>
+  </header>
+
+  <div class="controls">
+    <div class="control">
+      <span>Position</span>
+      <div class="seg" id="seg-position">
+        <button type="button" data-value="left">Left</button>
+        <button type="button" data-value="right" aria-pressed="true">Right</button>
+      </div>
+    </div>
+    <div class="control">
+      <span>Ticks</span>
+      <div class="seg" id="seg-colors">
+        <button type="button" data-value="plain" aria-pressed="true">Plain</button>
+        <button type="button" data-value="colored">Color-coded</button>
+      </div>
+    </div>
+    <div class="control">
+      <span>Theme</span>
+      <div class="seg" id="seg-theme">
+        <button type="button" data-value="auto" aria-pressed="true">Auto</button>
+        <button type="button" data-value="light">Light</button>
+        <button type="button" data-value="dark">Dark</button>
+      </div>
+    </div>
+    <div class="active-readout">Active: <b id="active-label">—</b></div>
+  </div>
+
+  <div class="doc-frame" id="frame">
+    <div class="doc-scroll" id="scroller">
+      <article id="article">
+        <h1 class="doc-title">The scroll rail</h1>
+        <p class="doc-sub">Hover the tick column at the edge to preview sections; click to jump.</p>
+
+        <h1>Overview</h1>
+        <p>Long documents and threads outgrow their scrollbar. The scrollbar tells you where you
+           are as a fraction of total pixels, but nothing about what is there — which section,
+           which message, which step. The scroll rail replaces that guesswork with a compact
+           column of ticks, one per stop, pinned to the edge of the scroll container.</p>
+        <p>The tick for the stop you are currently reading is highlighted. Pointing anywhere along
+           the rail engages the nearest tick and shows a small preview card with the stop's title
+           and a snippet of its content. Clicking smooth-scrolls you there.</p>
+
+        <h2>Why not a table of contents?</h2>
+        <p>A sidebar outline needs horizontal room that a chat pane, editor, or embedded viewer
+           rarely has. The rail costs about twenty pixels, stays out of the way at half opacity
+           until you scroll or reach for it, and still communicates the document's shape — longer
+           ticks are higher-level headings, shorter ones are subsections.</p>
+
+        <h2>Anatomy</h2>
+        <p>Three pieces: the track of ticks, the floating preview card, and a headless observer
+           that tracks the active stop. The whole strip is interactive — the pointer engages the
+           tick nearest the cursor, so the gaps between ticks never drop your hover, and the
+           preview card glides between positions instead of blinking off and on.</p>
+
+        <h1>Behaviour</h1>
+        <p>Everything is driven by two primitive ideas: which stop is active, and which tick the
+           pointer is nearest to.</p>
+
+        <h2>Active tracking</h2>
+        <p>A stop is active once its target's top has scrolled to within the activation offset
+           (default 96px) of the container top; the active stop is the last one to have crossed.
+           Before the first stop crosses, the first is active. This matches how you actually read:
+           the heading you most recently scrolled past is the section you are in.</p>
+
+        <h2>Hover and the preview card</h2>
+        <p>The card shows the stop's label plus an optional preview — a plain string or any DOM
+           node of your own, cloned on show. For heading-derived stops, the preview is the first
+           ~150 characters of prose following the heading.</p>
+
+        <h3>Gliding between ticks</h3>
+        <p>When the card is already visible and the engaged tick changes, only its vertical
+           position transitions — the card slides along the rail rather than re-appearing. A fresh
+           hover fades it in at the right spot with no slide from its last position.</p>
+
+        <h2>Click to navigate</h2>
+        <p>Clicking a tick — or the gap next to it — smooth-scrolls the stop's target into view.
+           The rail rests at half opacity and brightens only while you're actually pointing at
+           it, fading back the moment you stop hovering.</p>
+
+        <h1>Theming</h1>
+        <p>The rail ships with styles that read correctly in light and dark without configuration,
+           and exposes CSS custom properties for everything worth overriding.</p>
+
+        <h2>Custom properties</h2>
+        <pre><code>--rail-tick          tick color            (currentColor)
+--rail-accent        active-tick color     (#3b82f6)
+--rail-card-bg       preview background    (Canvas)
+--rail-card-fg       preview text          (CanvasText)
+--rail-card-border   preview border        (20% of text)
+--rail-card-width    preview width         (234px)</code></pre>
+        <p>Set any of these on the rail host or an ancestor. Ticks inherit the surrounding text
+           color by default, so they already match your palette.</p>
+
+        <h2>Dark mode</h2>
+        <p>Try the theme toggle above. Nothing in the rail is re-configured when it flips.</p>
+
+        <h3>System colors</h3>
+        <p>The preview card uses the CSS <code>Canvas</code> and <code>CanvasText</code> system
+           colors, which resolve through <code>color-scheme</code> — so the card follows your
+           page's light/dark setting for free.</p>
+
+        <h2>Color-coded ticks</h2>
+        <p>Each stop accepts an optional <code>color</code>, useful for coding ticks by category,
+           status, or persona. Flip the “Ticks” toggle above to color each top-level section of
+           this document. A colored tick keeps its own color when active instead of falling back
+           to the accent.</p>
+
+        <h1>API</h1>
+        <p>The core is framework-agnostic vanilla DOM with no dependencies and no build step. A
+           thin React wrapper (<code>&lt;ScrollRail&gt;</code> and <code>useActiveStop</code>) is
+           included for React projects.</p>
+
+        <h2>createScrollRail</h2>
+        <pre><code>const rail = createScrollRail({
+  scrollContainer: scroller,
+  items: headingItems(article),
+  position: 'right',
+})
+frame.appendChild(rail.element)</code></pre>
+        <p>Append the returned element into a <code>position: relative</code> box wrapping your
+           scroll container; the rail pins itself to that box's edge and spans its height.</p>
+
+        <h2>observeActive</h2>
+        <p>The headless active-stop tracker behind both the rail and the React hook. Give it the
+           scroll container, the stops, and a callback; build your own UI on top — a minimap, a
+           progress meter, a synced outline.</p>
+
+        <h2>The heading adapter</h2>
+        <p>Most documents want one stop per heading, so two helpers cover that directly.</p>
+
+        <h3>headingItems</h3>
+        <p>Queries a container for headings (default <code>h1, h2, h3</code>), assigns slug ids to
+           any that lack one, and returns rail stops with levels and text previews — it is what
+           drives this very page.</p>
+
+        <h3>itemsFromHeadings</h3>
+        <p>The same mapping for an array of heading elements you already hold, when you need to
+           filter or order them yourself.</p>
+
+        <h1>Accessibility</h1>
+        <p>Ticks are real buttons with the stop's label as their accessible name. Focusing a tick
+           with the keyboard shows the same preview card as hover, and the card only hides when
+           focus leaves the rail entirely, so Tabbing between ticks doesn't flicker. Activation
+           works with Enter and Space like any button.</p>
+      </article>
+    </div>
+    <!-- rail is appended here -->
+  </div>
+
+  <footer>
+    Built from <code>registry/scroll-rail/scroll-rail.ts</code> via <code>npm run demo:build</code>
+    · <a href="https://github.com/lloydhumphreys/components">github.com/lloydhumphreys/components</a>
+  </footer>
+</div>
+
+<!-- Bump ?v= whenever the bundle changes: GitHub Pages caches for 10 minutes. -->
+<script src="./scroll-rail.js?v=6"></script>
+<script>
+  const { createScrollRail, headingItems } = ScrollRail
+
+  const frame = document.getElementById('frame')
+  const scroller = document.getElementById('scroller')
+  const article = document.getElementById('article')
+  const activeLabel = document.getElementById('active-label')
+
+  // One stop per heading, skipping the document title. Ids are assigned once here and
+  // reused by the colored variant below.
+  const baseItems = headingItems(article, { exclude: '.doc-title' })
+
+  // Color-coded variant: one hue per top-level section, subsections inherit it.
+  const palette = ['#d4622a', '#2a9d8f', '#7c5cff', '#c2417c', '#4a8fe7', '#b08928']
+  let section = -1
+  const coloredItems = baseItems.map((it) => {
+    if (it.level === 1) section += 1
+    return { ...it, color: palette[section % palette.length] }
+  })
+
+  const state = { position: 'right', colors: 'plain' }
+  let rail = null
+
+  function mount() {
+    if (rail) { rail.destroy(); rail.element.remove() }
+    rail = createScrollRail({
+      scrollContainer: scroller,
+      items: state.colors === 'colored' ? coloredItems : baseItems,
+      position: state.position,
+      onActiveChange(id) {
+        const item = baseItems.find((it) => it.id === id)
+        activeLabel.textContent = item ? item.label : '—'
+      },
+    })
+    frame.appendChild(rail.element)
+  }
+  mount()
+
+  function segment(id, onChange) {
+    const seg = document.getElementById(id)
+    seg.addEventListener('click', (e) => {
+      const btn = e.target.closest('button')
+      if (!btn) return
+      for (const b of seg.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b === btn))
+      onChange(btn.dataset.value)
+    })
+  }
+
+  segment('seg-position', (v) => { state.position = v; mount() })
+  segment('seg-colors', (v) => {
+    state.colors = v
+    rail.setItems(v === 'colored' ? coloredItems : baseItems)
+  })
+  segment('seg-theme', (v) => {
+    if (v === 'auto') delete document.documentElement.dataset.theme
+    else document.documentElement.dataset.theme = v
+  })
+</script>
+</body>
+</html>

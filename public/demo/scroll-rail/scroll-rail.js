@@ -324,11 +324,11 @@ var ScrollRail = (() => {
 .scroll-rail-tick[data-level="2"] { width: 9px; }
 .scroll-rail-tick[data-level="3"] { width: 6px; }
 .scroll-rail-tick[data-level="4"] { width: 4px; }
-/* The whole column swells while the rail is hovered \u2014 every tick scales up ~1.5\xD7\u2026 */
-.scroll-rail.is-hover .scroll-rail-tick { width: 18px; }
-.scroll-rail.is-hover .scroll-rail-tick[data-level="2"] { width: 13px; }
-.scroll-rail.is-hover .scroll-rail-tick[data-level="3"] { width: 9px; }
-.scroll-rail.is-hover .scroll-rail-tick[data-level="4"] { width: 6px; }
+/* The whole column swells while the rail is hovered \u2014 every tick scales up ~1.1\xD7\u2026 */
+.scroll-rail.is-hover .scroll-rail-tick { width: 13px; }
+.scroll-rail.is-hover .scroll-rail-tick[data-level="2"] { width: 10px; }
+.scroll-rail.is-hover .scroll-rail-tick[data-level="3"] { width: 7px; }
+.scroll-rail.is-hover .scroll-rail-tick[data-level="4"] { width: 4px; }
 /* .is-hovered is set (via pointermove) on the tick nearest the cursor anywhere in the rail,
    so hover doesn't drop out in the gaps between ticks. Tick :hover is deliberately unused \u2014
    .is-hovered covers it and, unlike :hover, can't strand on scroll-under-cursor. */
@@ -340,7 +340,7 @@ var ScrollRail = (() => {
    (Same specificity as the level rules above \u2014 order matters.) */
 .scroll-rail.is-hover .scroll-rail-tick:focus-visible,
 .scroll-rail.is-hover .scroll-rail-tick.is-hovered,
-.scroll-rail.is-hover .scroll-rail-tick.is-active { width: 22px; }
+.scroll-rail.is-hover .scroll-rail-tick.is-active { width: 17px; }
 .scroll-rail-card {
   position: absolute; z-index: 10; box-sizing: border-box;
   width: var(--rail-card-width, 234px); max-width: var(--rail-card-width, 234px);

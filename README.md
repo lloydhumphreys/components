@@ -9,7 +9,8 @@ are installed with the shadcn CLI straight from this repo — no npm package.
 
 | Name | Description | |
 |------|-------------|--|
-| `scroll-rail` | A dependency-free scroll-position navigation rail (vanilla core + React wrapper). | [Demo](https://lloydhumphreys.github.io/components/demo/) |
+| `scroll-rail` | A dependency-free scroll-position navigation rail (vanilla core + React wrapper). | [Demo](https://lloydhumphreys.github.io/components/demo/scroll-rail/) |
+| `workflow-button` | A split button that drives a flow through stages — primary advances one step, caret menu jumps anywhere the flow allows (vanilla core + React wrapper). | [Demo](https://lloydhumphreys.github.io/components/demo/workflow-button/) |
 
 ## Install a component
 
@@ -41,16 +42,18 @@ npx shadcn@latest add @lloydhumphreys/scroll-rail
 
 **Live: <https://lloydhumphreys.github.io/components/demo/>**
 
-A standalone demo page lives at `public/demo/index.html` (scroll-rail: hover previews,
-click-to-scroll, left/right position, color-coded ticks, light/dark). It loads the vanilla
-core compiled from `registry/scroll-rail/scroll-rail.ts`:
+Each component has its own standalone demo page under `public/demo/<name>/`, listed from
+`public/demo/index.html`. Every page loads the vanilla core compiled to an IIFE bundle
+alongside it:
 
 ```bash
-npm run demo:build       # esbuild → public/demo/scroll-rail.js
-open public/demo/index.html   # plain script tag, works from file:// — no server needed
+npm run demo:build       # esbuild → public/demo/<name>/<name>.js (all components)
+open public/demo/         # or serve public/ and visit /demo/
 ```
 
-Re-run `demo:build` (and commit `public/demo/scroll-rail.js`) after editing the component.
+Re-run `demo:build` (and commit the regenerated `public/demo/<name>/<name>.js`) after
+editing a component. Bump the `?v=` on the demo page's `<script>` so GitHub Pages
+(10-minute cache) picks up the new bundle.
 
 ## How this repo works
 

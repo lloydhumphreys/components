@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "registry:build": "shadcn build",
-    "demo:build": "esbuild registry/scroll-rail/scroll-rail.ts --bundle --format=iife --global-name=ScrollRail --outfile=public/demo/scroll-rail.js"
+    "demo:build": "npm run demo:build:scroll-rail && npm run demo:build:workflow-button",
+    "demo:build:scroll-rail": "esbuild registry/scroll-rail/scroll-rail.ts --bundle --format=iife --global-name=ScrollRail --outfile=public/demo/scroll-rail/scroll-rail.js",
+    "demo:build:workflow-button": "esbuild registry/workflow-button/workflow-button.ts --bundle --format=iife --global-name=WorkflowButton --outfile=public/demo/workflow-button/workflow-button.js"
   },
   "devDependencies": {
     "esbuild": "^0.25.0",

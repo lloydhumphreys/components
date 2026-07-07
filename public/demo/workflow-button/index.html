@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>workflow-button — demo</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fafafa; --fg: #1b1b1f; --muted: #6b6b76; --border: #e2e2e8;
+    --panel: #ffffff; --code-bg: #f1f1f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #131316; --fg: #e7e7ec; --muted: #9a9aa5; --border: #2c2c33;
+      --panel: #1b1b20; --code-bg: #232329;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #131316; --fg: #e7e7ec; --muted: #9a9aa5; --border: #2c2c33;
+    --panel: #1b1b20; --code-bg: #232329;
+  }
+  :root[data-theme="light"] { color-scheme: light; }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .page { max-width: 880px; margin: 0 auto; padding: 40px 24px 64px; }
+  .masthead h1 { margin: 0; font-size: 26px; letter-spacing: -0.02em; }
+  .masthead p { margin: 8px 0 0; color: var(--muted); max-width: 62ch; }
+  .masthead code {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 2px 7px; font-size: 13px;
+  }
+  .install { margin-top: 14px; font-size: 13px; color: var(--muted); }
+  .back { display: inline-block; margin-bottom: 18px; font-size: 13px; color: var(--muted); text-decoration: none; }
+  .back:hover { color: var(--fg); }
+
+  .controls {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 20px;
+    margin: 28px 0 4px; font-size: 13px;
+  }
+  .control { display: flex; align-items: center; gap: 8px; }
+  .control > span { color: var(--muted); }
+  .seg {
+    display: inline-flex; border: 1px solid var(--border);
+    border-radius: 8px; overflow: hidden; background: var(--panel);
+  }
+  .seg button {
+    appearance: none; border: 0; margin: 0; padding: 5px 12px;
+    background: transparent; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer;
+  }
+  .seg button + button { border-left: 1px solid var(--border); }
+  .seg button[aria-pressed="true"] { background: var(--code-bg); color: var(--fg); font-weight: 600; }
+
+  .stage {
+    margin: 26px 0 12px; border: 1px solid var(--border); border-radius: 14px;
+    background: var(--panel); padding: 40px; display: grid; place-items: center; min-height: 240px;
+  }
+  /* The demo wires the component's accent to the current stage color for a bit of life. */
+  .mount { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+  .progress { display: flex; align-items: center; gap: 0; font-size: 12px; color: var(--muted); }
+  .progress .node { display: flex; align-items: center; gap: 6px; }
+  .progress .pip {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: color-mix(in srgb, var(--fg) 22%, transparent);
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .progress .node.done .pip { background: color-mix(in srgb, var(--fg) 45%, transparent); }
+  .progress .node.current .pip { background: var(--stage-color, #3b82f6); box-shadow: 0 0 0 3px color-mix(in srgb, var(--stage-color, #3b82f6) 25%, transparent); }
+  .progress .bar { width: 30px; height: 2px; background: color-mix(in srgb, var(--fg) 15%, transparent); }
+  .progress .name { white-space: nowrap; }
+  .progress .node.current .name { color: var(--fg); font-weight: 600; }
+  .log {
+    font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums;
+    min-height: 1.5em; text-align: center;
+  }
+  .log b { color: var(--fg); font-weight: 600; }
+
+  .note { margin-top: 20px; font-size: 13px; color: var(--muted); max-width: 62ch; }
+  .note code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px;
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; }
+  footer { margin-top: 22px; font-size: 13px; color: var(--muted); }
+  footer a { color: inherit; }
+</style>
+</head>
+<body>
+<div class="page">
+  <a class="back" href="../">← all demos</a>
+  <header class="masthead">
+    <h1>workflow-button</h1>
+    <p>A split button that drives an entity through workflow stages. The primary button
+       advances one step — its label changes with the stage — and the caret menu lists every
+       stage so you can jump anywhere the flow allows. Reachability is a predicate, so a
+       one-way (DAG) flow that forbids going back is a single line.</p>
+    <p class="install">Install: <code>npx shadcn@latest add @lloydhumphreys/workflow-button</code></p>
+  </header>
+
+  <div class="controls">
+    <div class="control">
+      <span>Flow</span>
+      <div class="seg" id="seg-mode">
+        <button type="button" data-value="linear" aria-pressed="true">Linear (jump anywhere)</button>
+        <button type="button" data-value="dag">DAG (forward only)</button>
+      </div>
+    </div>
+    <div class="control">
+      <span>Size</span>
+      <div class="seg" id="seg-size">
+        <button type="button" data-value="sm">sm</button>
+        <button type="button" data-value="default" aria-pressed="true">default</button>
+        <button type="button" data-value="lg">lg</button>
+      </div>
+    </div>
+    <div class="control">
+      <span>Variant</span>
+      <div class="seg" id="seg-variant">
+        <button type="button" data-value="default" aria-pressed="true">Default</button>
+        <button type="button" data-value="outline">Outline</button>
+      </div>
+    </div>
+    <div class="control">
+      <span>Steps show</span>
+      <div class="seg" id="seg-affordance">
+        <button type="button" data-value="dots" aria-pressed="true">Color dots</button>
+        <button type="button" data-value="icons">Icons</button>
+      </div>
+    </div>
+    <div class="control">
+      <span>Theme</span>
+      <div class="seg" id="seg-theme">
+        <button type="button" data-value="auto" aria-pressed="true">Auto</button>
+        <button type="button" data-value="light">Light</button>
+        <button type="button" data-value="dark">Dark</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="mount">
+      <div class="progress" id="progress"></div>
+      <div id="mount"></div>
+      <div class="log" id="log">Click the primary to advance, or the caret to jump.</div>
+    </div>
+  </div>
+
+  <p class="note">
+    In <b>DAG</b> mode the menu greys out every stage at or before the current one
+    (<code>canMoveTo: forwardOnly</code>) — once you've moved on you can't move back. In
+    <b>Linear</b> mode any stage is reachable. The primary advances to the next stage in
+    order and re-labels itself (e.g. <code>advanceLabel: "Submit for review"</code>); at the
+    final stage it settles into a disabled readout.
+  </p>
+
+  <footer>
+    Built from <code>registry/workflow-button/workflow-button.ts</code> via
+    <code>npm run demo:build</code> ·
+    <a href="https://github.com/lloydhumphreys/components">github.com/lloydhumphreys/components</a>
+  </footer>
+</div>
+
+<!-- Bump ?v= whenever the bundle changes: GitHub Pages caches for 10 minutes. -->
+<script src="./workflow-button.js?v=3"></script>
+<script>
+  const { createWorkflowButton, forwardOnly } = WorkflowButton
+
+  // advanceLabel is the verb for arriving AT this step (shown on the primary when this step
+  // is the advance target), so it sits on the destination, not the origin. Draft has none —
+  // nothing advances back into it.
+  const steps = [
+    { id: 'draft',     label: 'Draft',                                          color: '#9aa0aa', description: 'Work in progress' },
+    { id: 'review',    label: 'In review',   advanceLabel: 'Submit for review', color: '#e0a52a', description: 'Awaiting internal sign-off' },
+    { id: 'approved',  label: 'Approved',    advanceLabel: 'Approve',           color: '#4a8fe7', description: 'Cleared to ship' },
+    { id: 'published', label: 'Published',   advanceLabel: 'Publish',           color: '#2a9d8f', description: 'Live' },
+  ]
+
+  const mount = document.getElementById('mount')
+  const progress = document.getElementById('progress')
+  const log = document.getElementById('log')
+
+  // Tiny lucide-style icon factories, for the step.icon slot.
+  const icon = (inner) => () => {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    svg.setAttribute('viewBox', '0 0 24 24')
+    svg.setAttribute('fill', 'none')
+    svg.setAttribute('stroke', 'currentColor')
+    svg.setAttribute('stroke-width', '2')
+    svg.setAttribute('stroke-linecap', 'round')
+    svg.setAttribute('stroke-linejoin', 'round')
+    svg.innerHTML = inner
+    return svg
+  }
+  const ICONS = {
+    draft:     icon('<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>'),
+    review:    icon('<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>'),
+    approved:  icon('<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>'),
+    published: icon('<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>'),
+  }
+
+  const state = { mode: 'linear', size: 'default', variant: 'default', affordance: 'dots', current: 'draft' }
+  let wf = null
+
+  function stageColor(id) { return steps.find((s) => s.id === id)?.color ?? '#3b82f6' }
+
+  function renderProgress() {
+    const curIdx = steps.findIndex((s) => s.id === state.current)
+    progress.style.setProperty('--stage-color', stageColor(state.current))
+    progress.replaceChildren()
+    steps.forEach((s, i) => {
+      if (i > 0) {
+        const bar = document.createElement('div')
+        bar.className = 'bar'
+        progress.appendChild(bar)
+      }
+      const node = document.createElement('div')
+      node.className = 'node' + (i < curIdx ? ' done' : i === curIdx ? ' current' : '')
+      const pip = document.createElement('span'); pip.className = 'pip'
+      const name = document.createElement('span'); name.className = 'name'; name.textContent = s.label
+      node.appendChild(pip); node.appendChild(name)
+      progress.appendChild(node)
+    })
+  }
+
+  function mountButton() {
+    if (wf) { wf.destroy(); wf.element.remove() }
+    const shownSteps =
+      state.affordance === 'icons'
+        ? steps.map((s) => ({ ...s, icon: ICONS[s.id] }))
+        : steps
+    wf = createWorkflowButton({
+      steps: shownSteps,
+      current: state.current,
+      size: state.size,
+      variant: state.variant,
+      canMoveTo: state.mode === 'dag' ? forwardOnly : undefined,
+      onMove(toId, fromId) {
+        state.current = toId
+        const to = steps.find((s) => s.id === toId)
+        log.innerHTML = `Moved <b>${fromId}</b> → <b>${toId}</b>${to.id === 'published' ? ' — live 🎉' : ''}`
+        renderProgress()
+        // Re-mount so the accent + labels track the new stage.
+        mountButton()
+      },
+    })
+    mount.appendChild(wf.element)
+  }
+
+  renderProgress()
+  mountButton()
+
+  function segment(id, onChange) {
+    const seg = document.getElementById(id)
+    seg.addEventListener('click', (e) => {
+      const btn = e.target.closest('button')
+      if (!btn) return
+      for (const b of seg.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b === btn))
+      onChange(btn.dataset.value)
+    })
+  }
+
+  segment('seg-mode', (v) => { state.mode = v; mountButton() })
+  segment('seg-size', (v) => { state.size = v; mountButton() })
+  segment('seg-variant', (v) => { state.variant = v; mountButton() })
+  segment('seg-affordance', (v) => { state.affordance = v; mountButton() })
+  segment('seg-theme', (v) => {
+    if (v === 'auto') delete document.documentElement.dataset.theme
+    else document.documentElement.dataset.theme = v
+  })
+</script>
+</body>
+</html>

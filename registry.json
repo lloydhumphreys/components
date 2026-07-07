@@ -23,6 +23,27 @@
           "target": "components/scroll-rail/scroll-rail-react.tsx"
         }
       ]
+    },
+    {
+      "name": "workflow-button",
+      "type": "registry:component",
+      "title": "Workflow Button",
+      "description": "A dependency-free split button that drives an entity through workflow stages: the primary button advances one step (re-labelling itself per stage), and an attached caret menu lists every stage so you can jump anywhere the flow allows. Reachability is a predicate, so a one-way (DAG) flow that forbids going back is one line. Ships a framework-agnostic vanilla core plus a React wrapper.",
+      "author": "Lloyd Humphreys",
+      "dependencies": [],
+      "registryDependencies": [],
+      "files": [
+        {
+          "path": "registry/workflow-button/workflow-button.ts",
+          "type": "registry:lib",
+          "target": "components/workflow-button/workflow-button.ts"
+        },
+        {
+          "path": "registry/workflow-button/workflow-button-react.tsx",
+          "type": "registry:component",
+          "target": "components/workflow-button/workflow-button-react.tsx"
+        }
+      ]
     }
   ]
 }
