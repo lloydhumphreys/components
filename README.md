@@ -3,11 +3,13 @@
 A [shadcn](https://ui.shadcn.com/docs/registry)-compatible component registry. Components
 are installed with the shadcn CLI straight from this repo — no npm package.
 
+**▶ [Live demo](https://lloydhumphreys.github.io/components/demo/)**
+
 ## Components
 
-| Name | Description |
-|------|-------------|
-| `scroll-rail` | A dependency-free scroll-position navigation rail (vanilla core + React wrapper). |
+| Name | Description | |
+|------|-------------|--|
+| `scroll-rail` | A dependency-free scroll-position navigation rail (vanilla core + React wrapper). | [Demo](https://lloydhumphreys.github.io/components/demo/) |
 
 ## Install a component
 
