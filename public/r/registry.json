@@ -28,7 +28,7 @@
       "name": "workflow-button",
       "type": "registry:component",
       "title": "Workflow Button",
-      "description": "A dependency-free split button that drives an entity through workflow stages: the primary button advances one step (re-labelling itself per stage), and an attached caret menu lists every stage so you can jump anywhere the flow allows. Reachability is a predicate, so a one-way (DAG) flow that forbids going back is one line. Ships a framework-agnostic vanilla core plus a React wrapper.",
+      "description": "A dependency-free split button that drives an entity through workflow stages: the primary button advances the happy path (re-labelling itself per stage), and an attached caret menu jumps anywhere the flow allows \u2014 hidden entirely when nothing is reachable. The flow is data: per-step `to` transition lists (to[0] = happy path, to: [] = terminal), an app `context` threaded into every resolver for role-aware disabling and prominence, per-step emphasis via `advanceVariant` (all shadcn Button variants, 'primary' aliased to 'default'), per-step icons/colors/attribution meta, and renderPrimary/renderItem slots. Styled on shadcn theme tokens with light-dark() fallbacks. Ships a framework-agnostic vanilla core plus a React wrapper.",
       "author": "Lloyd Humphreys",
       "dependencies": [],
       "registryDependencies": [],
@@ -42,6 +42,27 @@
           "path": "registry/workflow-button/workflow-button-react.tsx",
           "type": "registry:component",
           "target": "components/workflow-button/workflow-button-react.tsx"
+        }
+      ]
+    },
+    {
+      "name": "workflow-button-shadcn",
+      "type": "registry:component",
+      "title": "Workflow Button (shadcn-native)",
+      "description": "The workflow split button composed from your app's actual shadcn <Button> and <DropdownMenu> \u2014 identical variants, sizes, theming, focus rings, and dark mode; icons, menu rows, and custom primary content are plain ReactNode. Same flow model as workflow-button: `to` transition lists as the definition, `context` for role-aware disabling/prominence, per-step `advanceVariant` emphasis, attribution `meta`, and the caret hides when nothing is reachable. Self-contained in one file.",
+      "author": "Lloyd Humphreys",
+      "dependencies": [
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "button",
+        "dropdown-menu"
+      ],
+      "files": [
+        {
+          "path": "registry/workflow-button/workflow-button-shadcn.tsx",
+          "type": "registry:component",
+          "target": "components/workflow-button/workflow-button-shadcn.tsx"
         }
       ]
     }

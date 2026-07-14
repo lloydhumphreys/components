@@ -10,7 +10,8 @@ are installed with the shadcn CLI straight from this repo — no npm package.
 | Name | Description | |
 |------|-------------|--|
 | `scroll-rail` | A dependency-free scroll-position navigation rail (vanilla core + React wrapper). | [Demo](https://lloydhumphreys.github.io/components/demo/scroll-rail/) |
-| `workflow-button` | A split button that drives a flow through stages — primary advances one step, caret menu jumps anywhere the flow allows (vanilla core + React wrapper). | [Demo](https://lloydhumphreys.github.io/components/demo/workflow-button/) |
+| `workflow-button` | A split button that drives a flow through stages — primary advances one step, caret menu jumps anywhere the flow allows (vanilla core + React wrapper; styled on shadcn theme tokens). | [Demo](https://lloydhumphreys.github.io/components/demo/workflow-button/) |
+| `workflow-button-shadcn` | The same control composed from your app's actual shadcn `<Button>` + `<DropdownMenu>` — ReactNode icons/children, identical theming. Installs `button` + `dropdown-menu` as registry deps. | |
 
 ## Install a component
 

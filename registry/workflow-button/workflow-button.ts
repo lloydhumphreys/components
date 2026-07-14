@@ -33,6 +33,27 @@
 // icons/children) should install `workflow-button-shadcn` instead — same flow semantics,
 // composed from shadcn primitives.
 
+/**
+ * How the split button presents — shadcn's Button variants, plus 'primary' as an alias
+ * for 'default' (many design systems call the filled one "primary"; both work). 'link'
+ * is deliberately unsupported: a link-styled split button with a caret trigger isn't a
+ * coherent control.
+ */
+export type WorkflowVariant =
+  | 'default'
+  | 'primary'
+  | 'secondary'
+  | 'outline'
+  | 'ghost'
+  | 'destructive'
+
+/** Collapse the 'primary' alias so styling only deals in canonical names. */
+export function normalizeVariant(
+  v: WorkflowVariant,
+): Exclude<WorkflowVariant, 'primary'> {
+  return v === 'primary' ? 'default' : v
+}
+
 /** One stage in the flow. */
 export interface WorkflowStep {
   /** Stable identity — what `current` points at and `onMove` reports. */
@@ -43,8 +64,22 @@ export interface WorkflowStep {
   /** Primary-button label when advancing *to* this step, e.g. "Submit for review".
    *  Use a verb here; `label` (the noun) is the fallback. */
   advanceLabel?: string
+  /**
+   * How prominent the primary should be when this step is the advance target — the
+   * emphasis lives on the *destination*, like `advanceLabel`. The idiom: give the control
+   * a quiet base (`variant: 'outline'`) and mark the stages that demand action with
+   * `advanceVariant: 'default'` (or `'destructive'` for high-consequence moves). Falls
+   * back to the control's `variant`.
+   */
+  advanceVariant?: WorkflowVariant
   /** Optional secondary line under the label in the menu. */
   description?: string
+  /**
+   * Instance annotation — who did this step, when ("Astrid · 2d ago"). When present it
+   * REPLACES `description` as the line under the label: the definition's hint gives way
+   * to what actually happened. For richer content use the `renderItem` slot.
+   */
+  meta?: string
   /** Optional status color (any CSS color) — a dot beside the label, in the menu and on the
    *  primary when this step is the target. Ignored when `icon` is set. */
   color?: string
@@ -53,31 +88,62 @@ export interface WorkflowStep {
   icon?: () => Node
   /** Hard-disable jumping to this step, regardless of `canMoveTo`. */
   disabled?: boolean
+  /**
+   * Explicit transitions out of this step — the workflow definition as data (the
+   * state-machine model, in contrast to code-first engines like Cloudflare Workflows
+   * whose graph only exists by running it; a UI has to *render* possibilities, so it
+   * wants the graph declared). When present:
+   *  - `to[0]` is the happy path — the primary's advance target,
+   *  - the menu enables exactly these ids (plus wherever `canMoveTo` further restricts),
+   *  - `to: []` marks an explicitly terminal stage.
+   * When absent, array order applies (advance = next in array, any step reachable).
+   */
+  to?: string[]
 }
 
-/** Resolve the advance target from a step. Return null for a terminal stage. */
-export type NextResolver = (
+/**
+ * Resolve the advance target from a step. Return null for a terminal stage. `context` is
+ * whatever the app passed as `options.context` (viewer role, permissions, instance data —
+ * the analogue of a workflow engine's event params).
+ */
+export type NextResolver<TCtx = unknown> = (
   current: WorkflowStep,
   steps: WorkflowStep[],
+  context: TCtx | undefined,
 ) => string | null
 
 /** May we move `from` → `to`? Governs the primary's enablement and each menu item. */
-export type MovePredicate = (
+export type MovePredicate<TCtx = unknown> = (
   to: WorkflowStep,
   from: WorkflowStep,
   steps: WorkflowStep[],
+  context: TCtx | undefined,
 ) => boolean
 
-/** Default advance target: the next step in array order, or null at the end. */
+/** Advance target by array order: the next step, or null at the end. */
 export const nextInOrder: NextResolver = (current, steps) => {
   const i = steps.findIndex((s) => s.id === current.id)
   return i >= 0 && i < steps.length - 1 ? steps[i + 1].id : null
 }
 
+/** The built-in `next`: the step's `to[0]` (happy path) when declared, else array order. */
+export const defaultNext: NextResolver = (current, steps, context) => {
+  if (current.to) return current.to[0] ?? null
+  return nextInOrder(current, steps, context)
+}
+
+/** The built-in `canMoveTo`: membership in the step's `to` list when declared, else any
+ *  non-disabled step. Role/permission gating layers on top via your own predicate. */
+export const defaultCanMoveTo: MovePredicate = (to, from) => {
+  if (to.disabled) return false
+  if (from.to) return from.to.includes(to.id)
+  return true
+}
+
 /**
- * A `canMoveTo` predicate for DAG / one-way flows: only steps *after* the current one (by
- * array order) are reachable — you can advance or skip ahead, never go back. Compose it
- * yourself for looser rules (e.g. allow one step back).
+ * A `canMoveTo` predicate for DAG / one-way flows over array order: only steps *after*
+ * the current one are reachable — advance or skip ahead, never back. (Flows that declare
+ * `to` lists encode their DAG directly and don't need this.)
  */
 export const forwardOnly: MovePredicate = (to, from, steps) => {
   if (to.disabled) return false
@@ -86,17 +152,23 @@ export const forwardOnly: MovePredicate = (to, from, steps) => {
   return toI > fromI
 }
 
-/** Default predicate: any step that isn't hard-disabled is reachable. */
-const anyEnabled: MovePredicate = (to) => !to.disabled
-
-export interface WorkflowButtonOptions {
+export interface WorkflowButtonOptions<TCtx = unknown> {
   steps: WorkflowStep[]
   /** Id of the current stage. */
   current: string
-  /** Advance target resolver. Default `nextInOrder`. */
-  next?: NextResolver
-  /** Reachability predicate. Default: any non-disabled step. Pass `forwardOnly` for DAG mode. */
-  canMoveTo?: MovePredicate
+  /**
+   * App data threaded, verbatim, into every resolver (`next`, `canMoveTo`, `variantFor`,
+   * `advanceLabelFor`) — the viewer's role/permissions, the instance's assignee, anything.
+   * Update it via `setState({ context })` and the control re-renders reachability and
+   * emphasis. This is how role-aware prominence AND role-aware disabling stay pure data:
+   * `canMoveTo: (to, from, steps, ctx) => ctx.role === 'reviewer'` etc.
+   */
+  context?: TCtx
+  /** Advance target resolver. Default `defaultNext` (`to[0]` when declared, else array order). */
+  next?: NextResolver<TCtx>
+  /** Reachability predicate. Default `defaultCanMoveTo` (`to`-membership when declared,
+   *  else any non-disabled step). Pass `forwardOnly` for array-order DAG flows. */
+  canMoveTo?: MovePredicate<TCtx>
   /**
    * Fired on advance (primary) or a menu pick, with the target and previous ids. Return
    * `false` to veto the built-in state update — do that when the parent owns `current` (async
@@ -107,7 +179,11 @@ export interface WorkflowButtonOptions {
    *  owns the state and drives it through `setState`. */
   manageState?: boolean
   /** Override the primary label. Falls back to `target.advanceLabel ?? target.label`. */
-  advanceLabelFor?: (target: WorkflowStep, from: WorkflowStep) => string
+  advanceLabelFor?: (
+    target: WorkflowStep,
+    from: WorkflowStep,
+    context: TCtx | undefined,
+  ) => string
   /**
    * Fully own the primary button's content: return a node (or string) and it replaces the
    * built-in icon/dot + label; return null to fall back to the default content for this
@@ -119,8 +195,28 @@ export interface WorkflowButtonOptions {
   }) => Node | string | null
   /** shadcn Button sizes: h-8 / h-9 / h-10. Default 'default'. */
   size?: 'sm' | 'default' | 'lg'
-  /** shadcn Button variants: 'default' = filled primary; 'outline' = bordered. */
-  variant?: 'default' | 'outline'
+  /** The base presentation — what the control looks like when no step overrides it.
+   *  Default 'default' (filled). Use 'outline' as the quiet base for per-step emphasis. */
+  variant?: WorkflowVariant
+  /**
+   * Dynamic emphasis resolver — wins over `advanceVariant` and `variant`. Use it when
+   * prominence depends on more than the stage (e.g. only the assigned reviewer sees a
+   * loud "Approve"). Return null/undefined to fall through.
+   */
+  variantFor?: (
+    target: WorkflowStep,
+    from: WorkflowStep,
+    context: TCtx | undefined,
+  ) => WorkflowVariant | null | undefined
+  /**
+   * Own a menu item's content: return a node and it replaces the default
+   * icon/label/description/meta row (the current-step check stays); return null to keep
+   * the default for that step. Reachability/disabling still apply outside the slot.
+   */
+  renderItem?: (
+    step: WorkflowStep,
+    state: { isCurrent: boolean; reachable: boolean },
+  ) => Node | null
   /** Accessible name for the menu trigger. Default "Choose stage". */
   menuLabel?: string
   /** Inject the stylesheet on first use (default true). */
@@ -129,14 +225,16 @@ export interface WorkflowButtonOptions {
   className?: string
 }
 
-export interface WorkflowButton {
+export interface WorkflowButton<TCtx = unknown> {
   /** The control root (a `role="group"`). Append it wherever you like. */
   readonly element: HTMLElement
   getCurrent(): string
   /** The id the primary would advance to right now, or null if terminal/blocked. */
   getAdvanceTarget(): string | null
-  /** Patch options in place (current, steps, disabled flags…) and re-render. */
-  setState(patch: Partial<Pick<WorkflowButtonOptions, 'steps' | 'current'>>): void
+  /** Patch state in place (current, steps, context) and re-render. */
+  setState(
+    patch: Partial<Pick<WorkflowButtonOptions<TCtx>, 'steps' | 'current' | 'context'>>,
+  ): void
   /** Programmatically advance (same as clicking the primary). No-op if terminal/blocked. */
   advance(): void
   /** Programmatically move to a step, if reachable. */
@@ -146,24 +244,52 @@ export interface WorkflowButton {
 }
 
 /** Build a workflow split button. */
-export function createWorkflowButton(opts: WorkflowButtonOptions): WorkflowButton {
+export function createWorkflowButton<TCtx = unknown>(
+  opts: WorkflowButtonOptions<TCtx>,
+): WorkflowButton<TCtx> {
   if (opts.injectStyles !== false) injectWorkflowStyles()
 
-  const next = opts.next ?? nextInOrder
-  const canMoveTo = opts.canMoveTo ?? anyEnabled
+  const next = (opts.next ?? defaultNext) as NextResolver<TCtx>
+  const canMoveTo = (opts.canMoveTo ?? defaultCanMoveTo) as MovePredicate<TCtx>
   const manageState = opts.manageState ?? true
   const size = opts.size ?? 'default'
-  const variant = opts.variant ?? 'default'
+  const baseVariant = opts.variant ?? 'default'
 
   let steps = opts.steps
   let current = opts.current
+  let context = opts.context
 
   const stepById = (id: string) => steps.find((s) => s.id === id)
 
+  /**
+   * The variant for this render: `variantFor` → the target's `advanceVariant` → the base.
+   * A terminal stage reads as a quiet 'secondary' readout (outline base stays outline).
+   */
+  const resolveVariant = (
+    target: WorkflowStep | null,
+    cur: WorkflowStep,
+  ): Exclude<WorkflowVariant, 'primary'> => {
+    if (target) {
+      return normalizeVariant(
+        opts.variantFor?.(target, cur, context) ??
+          target.advanceVariant ??
+          baseVariant,
+      )
+    }
+    const base = normalizeVariant(baseVariant)
+    return base === 'outline' || base === 'ghost' ? base : 'secondary'
+  }
+
   const root = document.createElement('div')
-  root.className =
-    `workflow-button workflow-button--${size} workflow-button--${variant}` +
+  const baseClass =
+    `workflow-button wf-size-${size}` +
     (opts.className ? ` ${opts.className}` : '')
+  const applyRootState = (variant: WorkflowVariant, terminal: boolean) => {
+    root.className =
+      `${baseClass} wf-variant-${variant}` +
+      (terminal ? ' is-terminal' : '') +
+      (open ? ' is-open' : '')
+  }
   root.setAttribute('role', 'group')
 
   // ── Primary ────────────────────────────────────────────────────────────────
@@ -196,11 +322,18 @@ export function createWorkflowButton(opts: WorkflowButtonOptions): WorkflowButto
   const advanceTargetId = (): string | null => {
     const cur = stepById(current)
     if (!cur) return null
-    const targetId = next(cur, steps)
+    const targetId = next(cur, steps, context)
     if (!targetId) return null
     const target = stepById(targetId)
-    if (!target || !canMoveTo(target, cur, steps)) return null
+    if (!target || !canMoveTo(target, cur, steps, context)) return null
     return targetId
+  }
+
+  /** Anywhere to go at all? When not, the picker is pointless and hides. */
+  const anyReachable = (): boolean => {
+    const cur = stepById(current)
+    if (!cur) return false
+    return steps.some((s) => s.id !== current && canMoveTo(s, cur, steps, context))
   }
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -211,9 +344,10 @@ export function createWorkflowButton(opts: WorkflowButtonOptions): WorkflowButto
     const target = targetId ? stepById(targetId) : null
 
     primary.disabled = !target
-    // Terminal (or blocked): the primary becomes a quiet readout of the current stage,
-    // styled like shadcn's `secondary` variant rather than a half-faded disabled button.
-    primary.classList.toggle('wf-primary--terminal', !target)
+    // Terminal (or blocked): the primary becomes a quiet readout of the current stage
+    // rather than a half-faded disabled button; otherwise the emphasis resolves per
+    // advance target (variantFor → advanceVariant → base variant).
+    applyRootState(resolveVariant(target ?? null, cur), !target)
 
     primary.replaceChildren()
     const custom = opts.renderPrimary?.({ target: target ?? null, current: cur }) ?? null
@@ -229,7 +363,9 @@ export function createWorkflowButton(opts: WorkflowButtonOptions): WorkflowButto
     labelEl.className = 'wf-primary-label'
     if (target) {
       const label =
-        opts.advanceLabelFor?.(target, cur) ?? target.advanceLabel ?? target.label
+        opts.advanceLabelFor?.(target, cur, context) ??
+        target.advanceLabel ??
+        target.label
       labelEl.textContent = label
       primary.setAttribute('aria-label', `${label} (advance from ${cur.label})`)
     } else {
@@ -240,6 +376,13 @@ export function createWorkflowButton(opts: WorkflowButtonOptions): WorkflowButto
   }
 
   const renderMenu = () => {
+    // Nowhere to go (terminal + not restartable, or role-locked): the picker is
+    // pointless — hide the caret and let the control read as a plain status readout.
+    const solo = !anyReachable()
+    trigger.hidden = solo
+    root.classList.toggle('is-solo', solo)
+    if (solo && open) closeMenu(false)
+
     menu.replaceChildren()
     items = steps.map((step) => {
       const item = document.createElement('button')
@@ -249,34 +392,43 @@ export function createWorkflowButton(opts: WorkflowButtonOptions): WorkflowButto
       item.dataset.id = step.id
       const isCurrent = step.id === current
       const reachable =
-        isCurrent || canMoveTo(step, stepById(current) ?? step, steps)
+        isCurrent || canMoveTo(step, stepById(current) ?? step, steps, context)
       item.disabled = !reachable && !isCurrent
       item.tabIndex = -1
       if (isCurrent) item.setAttribute('aria-current', 'true')
-
-      const aff = affordanceFor(step)
-
-      const text = document.createElement('span')
-      text.className = 'wf-item-text'
-      const lbl = document.createElement('span')
-      lbl.className = 'wf-item-label'
-      lbl.textContent = step.label
-      text.appendChild(lbl)
-      if (step.description) {
-        const desc = document.createElement('span')
-        desc.className = 'wf-item-desc'
-        desc.textContent = step.description
-        text.appendChild(desc)
-      }
 
       const mark = document.createElement('span')
       mark.className = 'wf-check'
       mark.setAttribute('aria-hidden', 'true')
       if (isCurrent) mark.innerHTML = checkSvg()
 
-      if (aff) item.appendChild(aff)
-      item.appendChild(text)
-      item.appendChild(mark)
+      // The slot owns everything left of the current-step check when it returns a node.
+      const custom =
+        opts.renderItem?.(step, { isCurrent, reachable: reachable && !isCurrent }) ?? null
+      if (custom !== null) {
+        appendContent(item, custom)
+        item.appendChild(mark)
+      } else {
+        const aff = affordanceFor(step)
+        const text = document.createElement('span')
+        text.className = 'wf-item-text'
+        const lbl = document.createElement('span')
+        lbl.className = 'wf-item-label'
+        lbl.textContent = step.label
+        text.appendChild(lbl)
+        // One line under the label: attribution (what happened) beats the
+        // definition's static hint when both exist.
+        const sub = step.meta ?? step.description
+        if (sub) {
+          const desc = document.createElement('span')
+          desc.className = 'wf-item-desc'
+          desc.textContent = sub
+          text.appendChild(desc)
+        }
+        if (aff) item.appendChild(aff)
+        item.appendChild(text)
+        item.appendChild(mark)
+      }
 
       item.addEventListener('click', () => {
         if (step.id === current) {
@@ -303,7 +455,7 @@ export function createWorkflowButton(opts: WorkflowButtonOptions): WorkflowButto
     if (toId === fromId) return
     const to = stepById(toId)
     const from = stepById(fromId)
-    if (!to || !from || !canMoveTo(to, from, steps)) return
+    if (!to || !from || !canMoveTo(to, from, steps, context)) return
     const veto = opts.onMove(toId, fromId)
     if (manageState && veto !== false) {
       current = toId
@@ -410,6 +562,7 @@ export function createWorkflowButton(opts: WorkflowButtonOptions): WorkflowButto
     setState(patch) {
       if (patch.steps) steps = patch.steps
       if (patch.current != null) current = patch.current
+      if ('context' in patch) context = patch.context
       render()
     },
     advance,
@@ -493,6 +646,7 @@ export function workflowStyles(): string {
   --_popover: var(--wf-menu-bg, var(--popover, light-dark(#ffffff, #18181b)));
   --_popover-fg: var(--wf-menu-fg, var(--popover-foreground, light-dark(#09090b, #fafafa)));
   --_muted-fg: var(--wf-muted, var(--muted-foreground, light-dark(#71717a, #a1a1aa)));
+  --_destructive: var(--destructive, light-dark(#dc2626, #b91c1c));
   --_ring: var(--wf-ring, var(--ring, light-dark(#a1a1aa, #71717a)));
   --_radius: var(--wf-radius, var(--radius, 0.625rem));
   /* shadcn's rounded-md — what <Button> actually uses. */
@@ -521,56 +675,81 @@ export function workflowStyles(): string {
               0 0 0 4px color-mix(in srgb, var(--_ring) 50%, transparent);
 }
 
-/* ── default variant: filled primary, hairline divider (no borders → no doubling). */
-.wf-primary {
-  border-radius: var(--_radius-md) 0 0 var(--_radius-md);
-  background: var(--_primary); color: var(--_primary-fg);
-}
-.wf-trigger {
-  border-radius: 0 var(--_radius-md) var(--_radius-md) 0;
-  background: var(--_primary); color: var(--_primary-fg);
+/* Shared split geometry. */
+.wf-primary { border-radius: var(--_radius-md) 0 0 var(--_radius-md); }
+.wf-trigger { border-radius: 0 var(--_radius-md) var(--_radius-md) 0; }
+.workflow-button.is-terminal .wf-primary { cursor: default; }
+/* Solo mode: nowhere to go at all — the caret hides and the primary owns both corners.
+   The display rule must be explicit: our button base sets display:inline-flex, and any
+   author display beats the UA's [hidden] → none, so the hidden attribute alone is not
+   enough to remove the trigger. */
+.workflow-button.is-solo .wf-primary { border-radius: var(--_radius-md); }
+.workflow-button.is-solo .wf-trigger,
+.workflow-button .wf-trigger[hidden] { display: none; }
+
+/* ── default: filled primary, hairline divider (no borders → no doubling). */
+.wf-variant-default .wf-primary,
+.wf-variant-default .wf-trigger { background: var(--_primary); color: var(--_primary-fg); }
+.wf-variant-default .wf-trigger {
   border-left: 1px solid color-mix(in srgb, var(--_primary-fg) 20%, transparent);
 }
 /* shadcn hover:bg-primary/90. */
-.wf-primary:hover:not(:disabled),
-.wf-trigger:hover { background: color-mix(in srgb, var(--_primary) 90%, transparent); }
+.wf-variant-default .wf-primary:hover:not(:disabled),
+.wf-variant-default .wf-trigger:hover {
+  background: color-mix(in srgb, var(--_primary) 90%, transparent);
+}
 
-/* Terminal readout: shadcn 'secondary', full opacity — a state, not a broken button. */
-.wf-primary--terminal, .wf-primary--terminal:hover {
-  background: var(--_secondary); color: var(--_secondary-fg); cursor: default;
+/* ── secondary: also the terminal readout (a state, not a broken button). */
+.wf-variant-secondary .wf-primary,
+.wf-variant-secondary .wf-trigger { background: var(--_secondary); color: var(--_secondary-fg); }
+.wf-variant-secondary .wf-trigger {
+  border-left: 1px solid color-mix(in srgb, var(--_secondary-fg) 15%, transparent);
 }
-.workflow-button--default:has(.wf-primary--terminal) .wf-trigger {
-  background: var(--_secondary); color: var(--_secondary-fg);
-  border-left-color: color-mix(in srgb, var(--_secondary-fg) 15%, transparent);
-}
-.workflow-button--default:has(.wf-primary--terminal) .wf-trigger:hover {
+.wf-variant-secondary .wf-primary:hover:not(:disabled),
+.wf-variant-secondary .wf-trigger:hover {
   background: color-mix(in srgb, var(--_secondary) 80%, var(--_secondary-fg) 6%);
 }
 
-/* ── outline variant: bordered like shadcn outline; edges overlap (-1px) → one border. */
-.workflow-button--outline .wf-primary,
-.workflow-button--outline .wf-trigger {
+/* ── destructive: for high-consequence advances (irreversible publishes, rejections). */
+.wf-variant-destructive .wf-primary,
+.wf-variant-destructive .wf-trigger {
+  background: var(--_destructive); color: #fff;
+}
+.wf-variant-destructive .wf-trigger {
+  border-left: 1px solid color-mix(in srgb, #fff 25%, transparent);
+}
+.wf-variant-destructive .wf-primary:hover:not(:disabled),
+.wf-variant-destructive .wf-trigger:hover {
+  background: color-mix(in srgb, var(--_destructive) 90%, transparent);
+}
+
+/* ── ghost: no chrome at rest; hover reveals the accent wash (per shadcn). */
+.wf-variant-ghost .wf-primary,
+.wf-variant-ghost .wf-trigger { background: transparent; color: inherit; }
+.wf-variant-ghost .wf-primary:hover:not(:disabled),
+.wf-variant-ghost .wf-trigger:hover { background: var(--_accent); color: var(--_accent-fg); }
+.wf-variant-ghost.is-terminal .wf-primary { color: var(--_muted-fg); }
+
+/* ── outline: bordered like shadcn outline; edges overlap (-1px) → one border. */
+.wf-variant-outline .wf-primary,
+.wf-variant-outline .wf-trigger {
   border: 1px solid var(--_border);
   background: var(--_background); color: inherit;
 }
-.workflow-button--outline .wf-trigger { margin-left: -1px; border-radius: 0 var(--_radius-md) var(--_radius-md) 0; }
-.workflow-button--outline .wf-primary { border-radius: var(--_radius-md) 0 0 var(--_radius-md); }
-.workflow-button--outline .wf-primary:hover:not(:disabled),
-.workflow-button--outline .wf-trigger:hover { background: var(--_accent); color: var(--_accent-fg); }
-.workflow-button--outline .wf-primary--terminal,
-.workflow-button--outline .wf-primary--terminal:hover {
-  background: var(--_background); color: var(--_muted-fg); cursor: default;
-}
+.wf-variant-outline .wf-trigger { margin-left: -1px; border-radius: 0 var(--_radius-md) var(--_radius-md) 0; }
+.wf-variant-outline .wf-primary:hover:not(:disabled),
+.wf-variant-outline .wf-trigger:hover { background: var(--_accent); color: var(--_accent-fg); }
+.wf-variant-outline.is-terminal .wf-primary { color: var(--_muted-fg); }
 /* Keep the shared edge crisp when the overlapped buttons are hovered/focused. */
-.workflow-button--outline button:hover { z-index: 1; }
+.wf-variant-outline button:hover { z-index: 1; }
 
 /* ── sizes (shadcn h-8 / h-9 / h-10; trigger is the matching square icon button). */
 .wf-primary { height: 36px; padding: 0 16px; }
 .wf-trigger { height: 36px; width: 36px; padding: 0; flex: none; }
-.workflow-button--sm .wf-primary { height: 32px; padding: 0 12px; font-size: 13px; }
-.workflow-button--sm .wf-trigger { height: 32px; width: 32px; }
-.workflow-button--lg .wf-primary { height: 40px; padding: 0 24px; }
-.workflow-button--lg .wf-trigger { height: 40px; width: 40px; }
+.wf-size-sm .wf-primary { height: 32px; padding: 0 12px; font-size: 13px; }
+.wf-size-sm .wf-trigger { height: 32px; width: 32px; }
+.wf-size-lg .wf-primary { height: 40px; padding: 0 24px; }
+.wf-size-lg .wf-trigger { height: 40px; width: 40px; }
 
 .wf-caret { transition: transform 0.18s ease; }
 .workflow-button.is-open .wf-caret { transform: rotate(180deg); }

@@ -21,14 +21,29 @@ var WorkflowButton = (() => {
   var workflow_button_exports = {};
   __export(workflow_button_exports, {
     createWorkflowButton: () => createWorkflowButton,
+    defaultCanMoveTo: () => defaultCanMoveTo,
+    defaultNext: () => defaultNext,
     forwardOnly: () => forwardOnly,
     injectWorkflowStyles: () => injectWorkflowStyles,
     nextInOrder: () => nextInOrder,
+    normalizeVariant: () => normalizeVariant,
     workflowStyles: () => workflowStyles
   });
+  function normalizeVariant(v) {
+    return v === "primary" ? "default" : v;
+  }
   var nextInOrder = (current, steps) => {
     const i = steps.findIndex((s) => s.id === current.id);
     return i >= 0 && i < steps.length - 1 ? steps[i + 1].id : null;
+  };
+  var defaultNext = (current, steps, context) => {
+    if (current.to) return current.to[0] ?? null;
+    return nextInOrder(current, steps, context);
+  };
+  var defaultCanMoveTo = (to, from) => {
+    if (to.disabled) return false;
+    if (from.to) return from.to.includes(to.id);
+    return true;
   };
   var forwardOnly = (to, from, steps) => {
     if (to.disabled) return false;
@@ -36,19 +51,31 @@ var WorkflowButton = (() => {
     const toI = steps.findIndex((s) => s.id === to.id);
     return toI > fromI;
   };
-  var anyEnabled = (to) => !to.disabled;
   function createWorkflowButton(opts) {
     if (opts.injectStyles !== false) injectWorkflowStyles();
-    const next = opts.next ?? nextInOrder;
-    const canMoveTo = opts.canMoveTo ?? anyEnabled;
+    const next = opts.next ?? defaultNext;
+    const canMoveTo = opts.canMoveTo ?? defaultCanMoveTo;
     const manageState = opts.manageState ?? true;
     const size = opts.size ?? "default";
-    const variant = opts.variant ?? "default";
+    const baseVariant = opts.variant ?? "default";
     let steps = opts.steps;
     let current = opts.current;
+    let context = opts.context;
     const stepById = (id) => steps.find((s) => s.id === id);
+    const resolveVariant = (target, cur) => {
+      if (target) {
+        return normalizeVariant(
+          opts.variantFor?.(target, cur, context) ?? target.advanceVariant ?? baseVariant
+        );
+      }
+      const base = normalizeVariant(baseVariant);
+      return base === "outline" || base === "ghost" ? base : "secondary";
+    };
     const root = document.createElement("div");
-    root.className = `workflow-button workflow-button--${size} workflow-button--${variant}` + (opts.className ? ` ${opts.className}` : "");
+    const baseClass = `workflow-button wf-size-${size}` + (opts.className ? ` ${opts.className}` : "");
+    const applyRootState = (variant, terminal) => {
+      root.className = `${baseClass} wf-variant-${variant}` + (terminal ? " is-terminal" : "") + (open ? " is-open" : "");
+    };
     root.setAttribute("role", "group");
     const primary = document.createElement("button");
     primary.type = "button";
@@ -72,11 +99,16 @@ var WorkflowButton = (() => {
     const advanceTargetId = () => {
       const cur = stepById(current);
       if (!cur) return null;
-      const targetId = next(cur, steps);
+      const targetId = next(cur, steps, context);
       if (!targetId) return null;
       const target = stepById(targetId);
-      if (!target || !canMoveTo(target, cur, steps)) return null;
+      if (!target || !canMoveTo(target, cur, steps, context)) return null;
       return targetId;
+    };
+    const anyReachable = () => {
+      const cur = stepById(current);
+      if (!cur) return false;
+      return steps.some((s) => s.id !== current && canMoveTo(s, cur, steps, context));
     };
     const renderPrimary = () => {
       const cur = stepById(current);
@@ -84,7 +116,7 @@ var WorkflowButton = (() => {
       const targetId = advanceTargetId();
       const target = targetId ? stepById(targetId) : null;
       primary.disabled = !target;
-      primary.classList.toggle("wf-primary--terminal", !target);
+      applyRootState(resolveVariant(target ?? null, cur), !target);
       primary.replaceChildren();
       const custom = opts.renderPrimary?.({ target: target ?? null, current: cur }) ?? null;
       if (custom !== null) {
@@ -98,7 +130,7 @@ var WorkflowButton = (() => {
       const labelEl = document.createElement("span");
       labelEl.className = "wf-primary-label";
       if (target) {
-        const label = opts.advanceLabelFor?.(target, cur) ?? target.advanceLabel ?? target.label;
+        const label = opts.advanceLabelFor?.(target, cur, context) ?? target.advanceLabel ?? target.label;
         labelEl.textContent = label;
         primary.setAttribute("aria-label", `${label} (advance from ${cur.label})`);
       } else {
@@ -108,6 +140,10 @@ var WorkflowButton = (() => {
       primary.appendChild(labelEl);
     };
     const renderMenu = () => {
+      const solo = !anyReachable();
+      trigger.hidden = solo;
+      root.classList.toggle("is-solo", solo);
+      if (solo && open) closeMenu(false);
       menu.replaceChildren();
       items = steps.map((step) => {
         const item = document.createElement("button");
@@ -116,30 +152,37 @@ var WorkflowButton = (() => {
         item.setAttribute("role", "menuitem");
         item.dataset.id = step.id;
         const isCurrent = step.id === current;
-        const reachable = isCurrent || canMoveTo(step, stepById(current) ?? step, steps);
+        const reachable = isCurrent || canMoveTo(step, stepById(current) ?? step, steps, context);
         item.disabled = !reachable && !isCurrent;
         item.tabIndex = -1;
         if (isCurrent) item.setAttribute("aria-current", "true");
-        const aff = affordanceFor(step);
-        const text = document.createElement("span");
-        text.className = "wf-item-text";
-        const lbl = document.createElement("span");
-        lbl.className = "wf-item-label";
-        lbl.textContent = step.label;
-        text.appendChild(lbl);
-        if (step.description) {
-          const desc = document.createElement("span");
-          desc.className = "wf-item-desc";
-          desc.textContent = step.description;
-          text.appendChild(desc);
-        }
         const mark = document.createElement("span");
         mark.className = "wf-check";
         mark.setAttribute("aria-hidden", "true");
         if (isCurrent) mark.innerHTML = checkSvg();
-        if (aff) item.appendChild(aff);
-        item.appendChild(text);
-        item.appendChild(mark);
+        const custom = opts.renderItem?.(step, { isCurrent, reachable: reachable && !isCurrent }) ?? null;
+        if (custom !== null) {
+          appendContent(item, custom);
+          item.appendChild(mark);
+        } else {
+          const aff = affordanceFor(step);
+          const text = document.createElement("span");
+          text.className = "wf-item-text";
+          const lbl = document.createElement("span");
+          lbl.className = "wf-item-label";
+          lbl.textContent = step.label;
+          text.appendChild(lbl);
+          const sub = step.meta ?? step.description;
+          if (sub) {
+            const desc = document.createElement("span");
+            desc.className = "wf-item-desc";
+            desc.textContent = sub;
+            text.appendChild(desc);
+          }
+          if (aff) item.appendChild(aff);
+          item.appendChild(text);
+          item.appendChild(mark);
+        }
         item.addEventListener("click", () => {
           if (step.id === current) {
             closeMenu();
@@ -162,7 +205,7 @@ var WorkflowButton = (() => {
       if (toId === fromId) return;
       const to = stepById(toId);
       const from = stepById(fromId);
-      if (!to || !from || !canMoveTo(to, from, steps)) return;
+      if (!to || !from || !canMoveTo(to, from, steps, context)) return;
       const veto = opts.onMove(toId, fromId);
       if (manageState && veto !== false) {
         current = toId;
@@ -255,6 +298,7 @@ var WorkflowButton = (() => {
       setState(patch) {
         if (patch.steps) steps = patch.steps;
         if (patch.current != null) current = patch.current;
+        if ("context" in patch) context = patch.context;
         render();
       },
       advance,
@@ -325,6 +369,7 @@ var WorkflowButton = (() => {
   --_popover: var(--wf-menu-bg, var(--popover, light-dark(#ffffff, #18181b)));
   --_popover-fg: var(--wf-menu-fg, var(--popover-foreground, light-dark(#09090b, #fafafa)));
   --_muted-fg: var(--wf-muted, var(--muted-foreground, light-dark(#71717a, #a1a1aa)));
+  --_destructive: var(--destructive, light-dark(#dc2626, #b91c1c));
   --_ring: var(--wf-ring, var(--ring, light-dark(#a1a1aa, #71717a)));
   --_radius: var(--wf-radius, var(--radius, 0.625rem));
   /* shadcn's rounded-md \u2014 what <Button> actually uses. */
@@ -353,56 +398,81 @@ var WorkflowButton = (() => {
               0 0 0 4px color-mix(in srgb, var(--_ring) 50%, transparent);
 }
 
-/* \u2500\u2500 default variant: filled primary, hairline divider (no borders \u2192 no doubling). */
-.wf-primary {
-  border-radius: var(--_radius-md) 0 0 var(--_radius-md);
-  background: var(--_primary); color: var(--_primary-fg);
-}
-.wf-trigger {
-  border-radius: 0 var(--_radius-md) var(--_radius-md) 0;
-  background: var(--_primary); color: var(--_primary-fg);
+/* Shared split geometry. */
+.wf-primary { border-radius: var(--_radius-md) 0 0 var(--_radius-md); }
+.wf-trigger { border-radius: 0 var(--_radius-md) var(--_radius-md) 0; }
+.workflow-button.is-terminal .wf-primary { cursor: default; }
+/* Solo mode: nowhere to go at all \u2014 the caret hides and the primary owns both corners.
+   The display rule must be explicit: our button base sets display:inline-flex, and any
+   author display beats the UA's [hidden] \u2192 none, so the hidden attribute alone is not
+   enough to remove the trigger. */
+.workflow-button.is-solo .wf-primary { border-radius: var(--_radius-md); }
+.workflow-button.is-solo .wf-trigger,
+.workflow-button .wf-trigger[hidden] { display: none; }
+
+/* \u2500\u2500 default: filled primary, hairline divider (no borders \u2192 no doubling). */
+.wf-variant-default .wf-primary,
+.wf-variant-default .wf-trigger { background: var(--_primary); color: var(--_primary-fg); }
+.wf-variant-default .wf-trigger {
   border-left: 1px solid color-mix(in srgb, var(--_primary-fg) 20%, transparent);
 }
 /* shadcn hover:bg-primary/90. */
-.wf-primary:hover:not(:disabled),
-.wf-trigger:hover { background: color-mix(in srgb, var(--_primary) 90%, transparent); }
+.wf-variant-default .wf-primary:hover:not(:disabled),
+.wf-variant-default .wf-trigger:hover {
+  background: color-mix(in srgb, var(--_primary) 90%, transparent);
+}
 
-/* Terminal readout: shadcn 'secondary', full opacity \u2014 a state, not a broken button. */
-.wf-primary--terminal, .wf-primary--terminal:hover {
-  background: var(--_secondary); color: var(--_secondary-fg); cursor: default;
+/* \u2500\u2500 secondary: also the terminal readout (a state, not a broken button). */
+.wf-variant-secondary .wf-primary,
+.wf-variant-secondary .wf-trigger { background: var(--_secondary); color: var(--_secondary-fg); }
+.wf-variant-secondary .wf-trigger {
+  border-left: 1px solid color-mix(in srgb, var(--_secondary-fg) 15%, transparent);
 }
-.workflow-button--default:has(.wf-primary--terminal) .wf-trigger {
-  background: var(--_secondary); color: var(--_secondary-fg);
-  border-left-color: color-mix(in srgb, var(--_secondary-fg) 15%, transparent);
-}
-.workflow-button--default:has(.wf-primary--terminal) .wf-trigger:hover {
+.wf-variant-secondary .wf-primary:hover:not(:disabled),
+.wf-variant-secondary .wf-trigger:hover {
   background: color-mix(in srgb, var(--_secondary) 80%, var(--_secondary-fg) 6%);
 }
 
-/* \u2500\u2500 outline variant: bordered like shadcn outline; edges overlap (-1px) \u2192 one border. */
-.workflow-button--outline .wf-primary,
-.workflow-button--outline .wf-trigger {
+/* \u2500\u2500 destructive: for high-consequence advances (irreversible publishes, rejections). */
+.wf-variant-destructive .wf-primary,
+.wf-variant-destructive .wf-trigger {
+  background: var(--_destructive); color: #fff;
+}
+.wf-variant-destructive .wf-trigger {
+  border-left: 1px solid color-mix(in srgb, #fff 25%, transparent);
+}
+.wf-variant-destructive .wf-primary:hover:not(:disabled),
+.wf-variant-destructive .wf-trigger:hover {
+  background: color-mix(in srgb, var(--_destructive) 90%, transparent);
+}
+
+/* \u2500\u2500 ghost: no chrome at rest; hover reveals the accent wash (per shadcn). */
+.wf-variant-ghost .wf-primary,
+.wf-variant-ghost .wf-trigger { background: transparent; color: inherit; }
+.wf-variant-ghost .wf-primary:hover:not(:disabled),
+.wf-variant-ghost .wf-trigger:hover { background: var(--_accent); color: var(--_accent-fg); }
+.wf-variant-ghost.is-terminal .wf-primary { color: var(--_muted-fg); }
+
+/* \u2500\u2500 outline: bordered like shadcn outline; edges overlap (-1px) \u2192 one border. */
+.wf-variant-outline .wf-primary,
+.wf-variant-outline .wf-trigger {
   border: 1px solid var(--_border);
   background: var(--_background); color: inherit;
 }
-.workflow-button--outline .wf-trigger { margin-left: -1px; border-radius: 0 var(--_radius-md) var(--_radius-md) 0; }
-.workflow-button--outline .wf-primary { border-radius: var(--_radius-md) 0 0 var(--_radius-md); }
-.workflow-button--outline .wf-primary:hover:not(:disabled),
-.workflow-button--outline .wf-trigger:hover { background: var(--_accent); color: var(--_accent-fg); }
-.workflow-button--outline .wf-primary--terminal,
-.workflow-button--outline .wf-primary--terminal:hover {
-  background: var(--_background); color: var(--_muted-fg); cursor: default;
-}
+.wf-variant-outline .wf-trigger { margin-left: -1px; border-radius: 0 var(--_radius-md) var(--_radius-md) 0; }
+.wf-variant-outline .wf-primary:hover:not(:disabled),
+.wf-variant-outline .wf-trigger:hover { background: var(--_accent); color: var(--_accent-fg); }
+.wf-variant-outline.is-terminal .wf-primary { color: var(--_muted-fg); }
 /* Keep the shared edge crisp when the overlapped buttons are hovered/focused. */
-.workflow-button--outline button:hover { z-index: 1; }
+.wf-variant-outline button:hover { z-index: 1; }
 
 /* \u2500\u2500 sizes (shadcn h-8 / h-9 / h-10; trigger is the matching square icon button). */
 .wf-primary { height: 36px; padding: 0 16px; }
 .wf-trigger { height: 36px; width: 36px; padding: 0; flex: none; }
-.workflow-button--sm .wf-primary { height: 32px; padding: 0 12px; font-size: 13px; }
-.workflow-button--sm .wf-trigger { height: 32px; width: 32px; }
-.workflow-button--lg .wf-primary { height: 40px; padding: 0 24px; }
-.workflow-button--lg .wf-trigger { height: 40px; width: 40px; }
+.wf-size-sm .wf-primary { height: 32px; padding: 0 12px; font-size: 13px; }
+.wf-size-sm .wf-trigger { height: 32px; width: 32px; }
+.wf-size-lg .wf-primary { height: 40px; padding: 0 24px; }
+.wf-size-lg .wf-trigger { height: 40px; width: 40px; }
 
 .wf-caret { transition: transform 0.18s ease; }
 .workflow-button.is-open .wf-caret { transform: rotate(180deg); }

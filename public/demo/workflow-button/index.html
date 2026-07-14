@@ -60,8 +60,14 @@
     margin: 26px 0 12px; border: 1px solid var(--border); border-radius: 14px;
     background: var(--panel); padding: 40px; display: grid; place-items: center; min-height: 240px;
   }
-  /* The demo wires the component's accent to the current stage color for a bit of life. */
   .mount { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+  /* Branching mode renders one synced button per persona, side by side. */
+  .mounts { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px 48px; }
+  .persona { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .persona .who {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--muted);
+  }
   .progress { display: flex; align-items: center; gap: 0; font-size: 12px; color: var(--muted); }
   .progress .node { display: flex; align-items: center; gap: 6px; }
   .progress .pip {
@@ -83,6 +89,35 @@
   .note { margin-top: 20px; font-size: 13px; color: var(--muted); max-width: 62ch; }
   .note code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px;
     background: var(--code-bg); border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; }
+
+  /* ── API docs ── */
+  .docs { margin-top: 44px; border-top: 1px solid var(--border); padding-top: 28px; }
+  .docs h2 { font-size: 19px; letter-spacing: -0.015em; margin: 0 0 4px; }
+  .docs .lead { color: var(--muted); font-size: 14px; max-width: 68ch; margin: 0 0 8px; }
+  .docs h3 { font-size: 14px; margin: 30px 0 8px; }
+  .docs code {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px;
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 5px; padding: 1px 5px;
+  }
+  .docs pre {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; overflow-x: auto; font-size: 12.5px; line-height: 1.55;
+  }
+  .docs pre code { background: none; border: 0; padding: 0; font-size: inherit; }
+  .docs table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 8px 0 4px; }
+  .docs th {
+    text-align: left; font-weight: 600; font-size: 11.5px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 6px 12px 6px 0; border-bottom: 1px solid var(--border);
+  }
+  .docs td {
+    vertical-align: top; padding: 7px 12px 7px 0; line-height: 1.5;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  }
+  .docs td:first-child { white-space: nowrap; }
+  .docs td.t { color: var(--muted); font-size: 12px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .docs .muted { color: var(--muted); }
   footer { margin-top: 22px; font-size: 13px; color: var(--muted); }
   footer a { color: inherit; }
 </style>
@@ -103,8 +138,9 @@
     <div class="control">
       <span>Flow</span>
       <div class="seg" id="seg-mode">
-        <button type="button" data-value="linear" aria-pressed="true">Linear (jump anywhere)</button>
+        <button type="button" data-value="linear" aria-pressed="true">Linear</button>
         <button type="button" data-value="dag">DAG (forward only)</button>
+        <button type="button" data-value="branching">Branching (to: lists)</button>
       </div>
     </div>
     <div class="control">
@@ -120,6 +156,13 @@
       <div class="seg" id="seg-variant">
         <button type="button" data-value="default" aria-pressed="true">Default</button>
         <button type="button" data-value="outline">Outline</button>
+      </div>
+    </div>
+    <div class="control">
+      <span>Emphasis</span>
+      <div class="seg" id="seg-emphasis">
+        <button type="button" data-value="uniform" aria-pressed="true">Uniform</button>
+        <button type="button" data-value="per-step">Per-step</button>
       </div>
     </div>
     <div class="control">
@@ -142,7 +185,7 @@
   <div class="stage">
     <div class="mount">
       <div class="progress" id="progress"></div>
-      <div id="mount"></div>
+      <div class="mounts" id="mounts"></div>
       <div class="log" id="log">Click the primary to advance, or the caret to jump.</div>
     </div>
   </div>
@@ -152,8 +195,193 @@
     (<code>canMoveTo: forwardOnly</code>) — once you've moved on you can't move back. In
     <b>Linear</b> mode any stage is reachable. The primary advances to the next stage in
     order and re-labels itself (e.g. <code>advanceLabel: "Submit for review"</code>); at the
-    final stage it settles into a disabled readout.
+    final stage it settles into a quiet readout.
   </p>
+  <p class="note">
+    <b>Branching</b> passes the workflow definition as data — each step declares its
+    transitions (<code>to: ['approved', 'draft']</code>): <code>to[0]</code> is the happy
+    path on the primary, the rest are menu-only alternates ("Draft" from review =
+    request changes), and <code>to: []</code> is terminal. It renders <b>two synced
+    buttons, one per persona</b> — the same steps and stage, a different
+    <code>context</code> each — so you can see both sides at once: Lloyd submits and
+    publishes, Astrid approves and sends back. When it's not your move, your button
+    quietens into a readout and the picker hides. Moves are stamped with whoever's button
+    did them (<code>meta</code> replaces the step's hint line in the menu).
+  </p>
+  <p class="note">
+    <b>Per-step emphasis</b> demonstrates the prominence model: the control takes a quiet
+    base (<code>variant: "outline"</code>) and each destination declares how arriving at it
+    should present — <code>advanceVariant: "default"</code> makes "Submit for review" loud,
+    "Approve" stays quiet (mid-flow, someone else's call), and "Publish" is
+    <code>"destructive"</code> to mark the irreversible step. Role-aware prominence (loud
+    only for the person who should act) plugs in via <code>variantFor(target, from)</code>.
+  </p>
+
+  <section class="docs">
+    <h2>API</h2>
+    <p class="lead">
+      The vanilla core (<code>workflow-button.ts</code>, zero dependencies). The React
+      wrapper (<code>workflow-button-react.tsx</code>) exposes the same options as props;
+      <code>workflow-button-shadcn.tsx</code> is the same control composed from your app's
+      shadcn <code>&lt;Button&gt;</code> + <code>&lt;DropdownMenu&gt;</code>, with ReactNode
+      icons and slots.
+    </p>
+
+    <pre><code>import { createWorkflowButton } from './workflow-button'
+
+const wf = createWorkflowButton({
+  steps: [
+    { id: 'draft',     label: 'Draft', to: ['review'] },
+    { id: 'review',    label: 'In review', advanceLabel: 'Submit for review',
+      advanceVariant: 'primary', to: ['approved', 'draft'] },
+    { id: 'approved',  label: 'Approved', advanceLabel: 'Approve', to: ['published'] },
+    { id: 'published', label: 'Published', advanceLabel: 'Publish', to: [] },
+  ],
+  current: 'draft',
+  variant: 'outline',                       // quiet base; steps declare their own emphasis
+  context: { role: user.role },             // reaches every resolver below
+  canMoveTo: (to, from, steps, ctx) =&gt; ctx.role === roleFor(to),
+  onMove(toId, fromId) { save(toId) },
+})
+host.appendChild(wf.element)</code></pre>
+
+    <h3><code>createWorkflowButton(options) → WorkflowButton</code></h3>
+    <table>
+      <tr><th>Option</th><th>Type</th><th></th></tr>
+      <tr><td><code>steps</code></td><td class="t">WorkflowStep[]</td>
+        <td>The flow, in order. Required.</td></tr>
+      <tr><td><code>current</code></td><td class="t">string</td>
+        <td>Id of the current stage. Required.</td></tr>
+      <tr><td><code>onMove</code></td><td class="t">(toId, fromId) → void | false</td>
+        <td>Fired on advance or a menu pick. Return <code>false</code> to veto the built-in
+            state update (when a parent owns <code>current</code>); reflect the move via
+            <code>setState</code>. Required.</td></tr>
+      <tr><td><code>context</code></td><td class="t">TCtx</td>
+        <td>App data (viewer role, permissions, assignee…) passed verbatim to every
+            resolver. Update with <code>setState({ context })</code>.</td></tr>
+      <tr><td><code>next</code></td><td class="t">(current, steps, ctx) → string | null</td>
+        <td>Advance-target resolver. Default <code>defaultNext</code>: the step's
+            <code>to[0]</code> when declared, else next in array order. Null = terminal.</td></tr>
+      <tr><td><code>canMoveTo</code></td><td class="t">(to, from, steps, ctx) → boolean</td>
+        <td>Reachability — governs the primary, each menu item, and whether the picker
+            shows at all. Default <code>defaultCanMoveTo</code>: <code>to</code>-membership
+            when declared, else any non-disabled step. Also your role-gating hook.</td></tr>
+      <tr><td><code>variant</code></td><td class="t">'default' | 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive'</td>
+        <td>Base presentation ('primary' is an alias for 'default'). Per-step
+            <code>advanceVariant</code> / <code>variantFor</code> win over it.</td></tr>
+      <tr><td><code>variantFor</code></td><td class="t">(target, from, ctx) → variant | null</td>
+        <td>Dynamic emphasis (role-aware prominence). Null falls through to
+            <code>advanceVariant</code> → <code>variant</code>.</td></tr>
+      <tr><td><code>advanceLabelFor</code></td><td class="t">(target, from, ctx) → string</td>
+        <td>Override the primary's label. Falls back to
+            <code>target.advanceLabel ?? target.label</code>.</td></tr>
+      <tr><td><code>renderPrimary</code></td><td class="t">({ target, current }) → Node | string | null</td>
+        <td>Own the primary's content. <code>target</code> is null at a terminal stage;
+            return null to keep the default content.</td></tr>
+      <tr><td><code>renderItem</code></td><td class="t">(step, { isCurrent, reachable }) → Node | null</td>
+        <td>Own a menu row (left of the current-step check). Null keeps the default.</td></tr>
+      <tr><td><code>size</code></td><td class="t">'sm' | 'default' | 'lg'</td>
+        <td>shadcn button heights: 32 / 36 / 40&nbsp;px.</td></tr>
+      <tr><td><code>manageState</code></td><td class="t">boolean = true</td>
+        <td>Advance the control's own <code>current</code> on a move. Set false when a
+            parent owns state (the React wrapper does this).</td></tr>
+      <tr><td><code>menuLabel</code></td><td class="t">string = 'Choose stage'</td>
+        <td>Accessible name for the caret trigger.</td></tr>
+      <tr><td><code>injectStyles</code></td><td class="t">boolean = true</td>
+        <td>Inject the stylesheet on first use; set false and ship
+            <code>workflowStyles()</code> yourself (SSR).</td></tr>
+      <tr><td><code>className</code></td><td class="t">string</td>
+        <td>Extra class(es) on the root, for overrides.</td></tr>
+    </table>
+
+    <h3><code>WorkflowStep</code></h3>
+    <table>
+      <tr><th>Field</th><th>Type</th><th></th></tr>
+      <tr><td><code>id</code></td><td class="t">string</td>
+        <td>Stable identity. Required.</td></tr>
+      <tr><td><code>label</code></td><td class="t">string</td>
+        <td>Menu label; the primary's fallback label. Required.</td></tr>
+      <tr><td><code>advanceLabel</code></td><td class="t">string</td>
+        <td>Primary label when advancing <em>to</em> this step — a verb, on the
+            destination ("Submit for review").</td></tr>
+      <tr><td><code>advanceVariant</code></td><td class="t">variant</td>
+        <td>Prominence when this step is the advance target — emphasis lives on the
+            destination. Idiom: quiet base, loud decision points.</td></tr>
+      <tr><td><code>to</code></td><td class="t">string[]</td>
+        <td>Transitions out of this step — the definition as data. <code>to[0]</code> is
+            the happy path; <code>to: []</code> is terminal; absent = array order.</td></tr>
+      <tr><td><code>description</code></td><td class="t">string</td>
+        <td>Hint line under the menu label.</td></tr>
+      <tr><td><code>meta</code></td><td class="t">string</td>
+        <td>Instance annotation ("Astrid · 2d"). <b>Replaces</b> <code>description</code>
+            when present — what happened beats what was planned.</td></tr>
+      <tr><td><code>icon</code></td><td class="t">() → Node</td>
+        <td>Leading icon factory (16px slot). Wins over <code>color</code>.</td></tr>
+      <tr><td><code>color</code></td><td class="t">string</td>
+        <td>Status-dot color (any CSS color).</td></tr>
+      <tr><td><code>disabled</code></td><td class="t">boolean</td>
+        <td>Hard-disable jumping to this step, regardless of <code>canMoveTo</code>.</td></tr>
+    </table>
+
+    <h3>Instance</h3>
+    <table>
+      <tr><th>Member</th><th></th></tr>
+      <tr><td><code>element</code></td>
+        <td>The control root (<code>role="group"</code>). Append it anywhere.</td></tr>
+      <tr><td><code>getCurrent()</code></td><td>Current stage id.</td></tr>
+      <tr><td><code>getAdvanceTarget()</code></td>
+        <td>Id the primary would advance to, or null if terminal/blocked.</td></tr>
+      <tr><td><code>setState({ steps?, current?, context? })</code></td>
+        <td>Patch state and re-render (reachability, emphasis, picker visibility).</td></tr>
+      <tr><td><code>advance()</code></td><td>Programmatic primary click.</td></tr>
+      <tr><td><code>moveTo(id)</code></td><td>Programmatic jump, if reachable.</td></tr>
+      <tr><td><code>destroy()</code></td>
+        <td>Detach listeners; then <code>element.remove()</code>.</td></tr>
+    </table>
+
+    <h3>Resolution order</h3>
+    <p class="note" style="margin-top:8px">
+      Primary label: <code>advanceLabelFor</code> → <code>target.advanceLabel</code> →
+      <code>target.label</code>. &nbsp;Emphasis: <code>variantFor</code> →
+      <code>target.advanceVariant</code> → <code>variant</code>. &nbsp;At a terminal or
+      blocked stage the primary becomes a full-opacity <code>secondary</code> readout of
+      the current step (outline/ghost bases stay put), and when <em>no</em> step is
+      reachable the caret hides entirely.
+    </p>
+
+    <h3>Helpers</h3>
+    <table>
+      <tr><th>Export</th><th></th></tr>
+      <tr><td><code>defaultNext</code></td>
+        <td><code>to[0]</code> when declared, else array order — the built-in
+            <code>next</code>.</td></tr>
+      <tr><td><code>defaultCanMoveTo</code></td>
+        <td><code>to</code>-membership when declared, else any non-disabled step — the
+            built-in <code>canMoveTo</code>. Compose role gates on top.</td></tr>
+      <tr><td><code>nextInOrder</code></td><td>Plain array-order advance.</td></tr>
+      <tr><td><code>forwardOnly</code></td>
+        <td>Array-order DAG predicate: never backwards. (Flows with <code>to</code> lists
+            don't need it.)</td></tr>
+      <tr><td><code>normalizeVariant</code></td>
+        <td>Collapses the <code>'primary'</code> alias to <code>'default'</code>.</td></tr>
+      <tr><td><code>injectWorkflowStyles</code> / <code>workflowStyles</code></td>
+        <td>Inject the stylesheet / get its CSS text (SSR or CSP setups).</td></tr>
+    </table>
+
+    <h3>Theming</h3>
+    <p class="note" style="margin-top:8px">
+      Consumes shadcn theme tokens when present (<code>--primary</code>,
+      <code>--secondary</code>, <code>--destructive</code>, <code>--accent</code>,
+      <code>--popover</code>, <code>--border</code>/<code>--input</code>,
+      <code>--ring</code>, <code>--radius</code>) with zinc <code>light-dark()</code>
+      fallbacks — inside a shadcn app it matches <code>&lt;Button&gt;</code> untouched;
+      standalone it still reads correctly in both themes. Override independently of the app
+      theme via <code>--wf-primary-bg</code>, <code>--wf-primary-fg</code>,
+      <code>--wf-border</code>, <code>--wf-hover</code>, <code>--wf-menu-bg</code>,
+      <code>--wf-menu-fg</code>, <code>--wf-muted</code>, <code>--wf-ring</code>,
+      <code>--wf-radius</code>.
+    </p>
+  </section>
 
   <footer>
     Built from <code>registry/workflow-button/workflow-button.ts</code> via
@@ -163,9 +391,9 @@
 </div>
 
 <!-- Bump ?v= whenever the bundle changes: GitHub Pages caches for 10 minutes. -->
-<script src="./workflow-button.js?v=3"></script>
+<script src="./workflow-button.js?v=8"></script>
 <script>
-  const { createWorkflowButton, forwardOnly } = WorkflowButton
+  const { createWorkflowButton, forwardOnly, defaultCanMoveTo } = WorkflowButton
 
   // advanceLabel is the verb for arriving AT this step (shown on the primary when this step
   // is the advance target), so it sits on the destination, not the origin. Draft has none —
@@ -177,7 +405,7 @@
     { id: 'published', label: 'Published',   advanceLabel: 'Publish',           color: '#2a9d8f', description: 'Live' },
   ]
 
-  const mount = document.getElementById('mount')
+  const mounts = document.getElementById('mounts')
   const progress = document.getElementById('progress')
   const log = document.getElementById('log')
 
@@ -200,8 +428,29 @@
     published: icon('<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>'),
   }
 
-  const state = { mode: 'linear', size: 'default', variant: 'default', affordance: 'dots', current: 'draft' }
-  let wf = null
+  // Per-step emphasis (the quiet-base idiom): the base variant goes outline, and the
+  // destinations that demand action declare their own prominence — a loud "Submit for
+  // review", a destructive "Publish" (it's irreversible in DAG mode). "Approve" stays
+  // quiet on purpose: mid-flow, someone else's decision.
+  const EMPHASIS = { review: 'default', published: 'destructive' }
+
+  // Branching mode: the flow as data. to[0] is the happy path (the primary); the rest are
+  // menu-only alternates ("Request changes" = back to Draft). Published is terminal
+  // (to: []) — with nowhere to go, the caret hides and the control reads as a status.
+  const TRANSITIONS = {
+    draft: ['review'],
+    review: ['approved', 'draft'],
+    approved: ['published', 'draft'],
+    published: [],
+  }
+  // Role gate on top of the transition lists: authors submit and publish, reviewers
+  // approve and send back. `context` carries the role into canMoveTo.
+  const ROLE_FOR_MOVE = { review: 'author', approved: 'reviewer', draft: 'reviewer', published: 'author' }
+  const ROLE_NAMES = { author: 'Lloyd', reviewer: 'Astrid' }
+
+  const state = { mode: 'linear', size: 'default', variant: 'default', emphasis: 'uniform', affordance: 'dots', current: 'draft' }
+  const history = {} // stepId → "who · when" attribution, stamped as moves happen
+  let wfs = []
 
   function stageColor(id) { return steps.find((s) => s.id === id)?.color ?? '#3b82f6' }
 
@@ -225,27 +474,70 @@
   }
 
   function mountButton() {
-    if (wf) { wf.destroy(); wf.element.remove() }
-    const shownSteps =
-      state.affordance === 'icons'
-        ? steps.map((s) => ({ ...s, icon: ICONS[s.id] }))
-        : steps
-    wf = createWorkflowButton({
-      steps: shownSteps,
-      current: state.current,
-      size: state.size,
-      variant: state.variant,
-      canMoveTo: state.mode === 'dag' ? forwardOnly : undefined,
-      onMove(toId, fromId) {
-        state.current = toId
-        const to = steps.find((s) => s.id === toId)
-        log.innerHTML = `Moved <b>${fromId}</b> → <b>${toId}</b>${to.id === 'published' ? ' — live 🎉' : ''}`
-        renderProgress()
-        // Re-mount so the accent + labels track the new stage.
-        mountButton()
-      },
-    })
-    mount.appendChild(wf.element)
+    for (const w of wfs) { w.destroy(); w.element.remove() }
+    wfs = []
+    mounts.replaceChildren()
+
+    const shownSteps = steps.map((s) => ({
+      ...s,
+      ...(state.affordance === 'icons' ? { icon: ICONS[s.id] } : {}),
+      ...(state.emphasis === 'per-step' && EMPHASIS[s.id]
+        ? { advanceVariant: EMPHASIS[s.id] }
+        : {}),
+      ...(state.mode === 'branching' ? { to: TRANSITIONS[s.id] } : {}),
+      ...(history[s.id] ? { meta: history[s.id] } : {}),
+    }))
+    const canMoveTo =
+      state.mode === 'dag'
+        ? forwardOnly
+        : state.mode === 'branching'
+          ? (to, from, steps, ctx) =>
+              defaultCanMoveTo(to, from, steps, ctx) &&
+              ROLE_FOR_MOVE[to.id] === ctx.role
+          : undefined
+
+    const make = (role) =>
+      createWorkflowButton({
+        steps: shownSteps,
+        current: state.current,
+        context: role ? { role } : undefined,
+        size: state.size,
+        variant: state.variant,
+        canMoveTo,
+        onMove(toId, fromId) {
+          // Attribution comes from which persona's button fired the move.
+          if (role) history[fromId] = `${ROLE_NAMES[role]} · just now`
+          state.current = toId
+          const to = steps.find((s) => s.id === toId)
+          log.innerHTML =
+            `${role ? `<b>${ROLE_NAMES[role]}</b> moved` : 'Moved'} ` +
+            `<b>${fromId}</b> → <b>${toId}</b>${to.id === 'published' ? ' — live 🎉' : ''}`
+          renderProgress()
+          // Re-mount so both personas' buttons re-resolve against the new stage.
+          mountButton()
+        },
+      })
+
+    if (state.mode === 'branching') {
+      // One workflow instance, two viewers: the same steps/current, a different
+      // `context` per persona — each side sees only what it can do.
+      for (const role of ['author', 'reviewer']) {
+        const panel = document.createElement('div')
+        panel.className = 'persona'
+        const who = document.createElement('div')
+        who.className = 'who'
+        who.textContent = `${ROLE_NAMES[role]} — ${role}`
+        const wf = make(role)
+        panel.appendChild(who)
+        panel.appendChild(wf.element)
+        mounts.appendChild(panel)
+        wfs.push(wf)
+      }
+    } else {
+      const wf = make(null)
+      mounts.appendChild(wf.element)
+      wfs.push(wf)
+    }
   }
 
   renderProgress()
@@ -264,6 +556,17 @@
   segment('seg-mode', (v) => { state.mode = v; mountButton() })
   segment('seg-size', (v) => { state.size = v; mountButton() })
   segment('seg-variant', (v) => { state.variant = v; mountButton() })
+  segment('seg-emphasis', (v) => {
+    state.emphasis = v
+    // Per-step emphasis reads best over a quiet base — flip to outline (overridable).
+    if (v === 'per-step' && state.variant === 'default') {
+      state.variant = 'outline'
+      for (const b of document.getElementById('seg-variant').querySelectorAll('button')) {
+        b.setAttribute('aria-pressed', String(b.dataset.value === 'outline'))
+      }
+    }
+    mountButton()
+  })
   segment('seg-affordance', (v) => { state.affordance = v; mountButton() })
   segment('seg-theme', (v) => {
     if (v === 'auto') delete document.documentElement.dataset.theme
