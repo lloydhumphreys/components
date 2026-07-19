@@ -65,6 +65,57 @@
           "target": "components/workflow-button/workflow-button-shadcn.tsx"
         }
       ]
+    },
+    {
+      "name": "slide-stepper",
+      "type": "registry:component",
+      "title": "Slide Stepper",
+      "description": "A dependency-free auto-advancing slide progress indicator, Apple/Instagram-stories style: a pill of dots whose active dot stretches into a bar that fills over a timer, with a detached pause/replay circle. Clips to N visible dots as a centered, edge-clamped tape counter; horizontal or vertical; taps jump, swipes step, and pausing composes (user pause, hover, tab hidden, offscreen, gesture, focus) so auto-pauses never clobber an explicit one. Ships a headless engine, the pill, a zero-wiring crossfade carousel, and React wrappers with a useSlideStepper hook.",
+      "author": "Lloyd Humphreys",
+      "dependencies": [],
+      "registryDependencies": [],
+      "files": [
+        {
+          "path": "registry/slide-stepper/slide-stepper.ts",
+          "type": "registry:lib",
+          "target": "components/slide-stepper/slide-stepper.ts"
+        },
+        {
+          "path": "registry/slide-stepper/slide-stepper-carousel.ts",
+          "type": "registry:lib",
+          "target": "components/slide-stepper/slide-stepper-carousel.ts"
+        },
+        {
+          "path": "registry/slide-stepper/slide-stepper-react.tsx",
+          "type": "registry:component",
+          "target": "components/slide-stepper/slide-stepper-react.tsx"
+        },
+        {
+          "path": "registry/slide-stepper/slide-stepper-carousel-react.tsx",
+          "type": "registry:component",
+          "target": "components/slide-stepper/slide-stepper-carousel-react.tsx"
+        }
+      ]
+    },
+    {
+      "name": "slide-stepper-shadcn",
+      "type": "registry:component",
+      "title": "Slide Stepper (shadcn-native)",
+      "description": "The auto-advancing slide stepper composed shadcn-natively: Tailwind theme tokens for every color, shadcn's <Button> as the pause circle, lucide icons, cn. Same model as slide-stepper — headless useSlideStepper hook, the pill with tape-counter clipping, and a zero-wiring crossfade SlideStepperCarousel — self-contained in one file.",
+      "author": "Lloyd Humphreys",
+      "dependencies": [
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "button"
+      ],
+      "files": [
+        {
+          "path": "registry/slide-stepper/slide-stepper-shadcn.tsx",
+          "type": "registry:component",
+          "target": "components/slide-stepper/slide-stepper-shadcn.tsx"
+        }
+      ]
     }
   ]
 }

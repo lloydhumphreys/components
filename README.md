@@ -12,6 +12,8 @@ are installed with the shadcn CLI straight from this repo — no npm package.
 | `scroll-rail` | A dependency-free scroll-position navigation rail (vanilla core + React wrapper). | [Demo](https://lloydhumphreys.github.io/components/demo/scroll-rail/) |
 | `workflow-button` | A split button that drives a flow through stages — primary advances one step, caret menu jumps anywhere the flow allows (vanilla core + React wrapper; styled on shadcn theme tokens). | [Demo](https://lloydhumphreys.github.io/components/demo/workflow-button/) |
 | `workflow-button-shadcn` | The same control composed from your app's actual shadcn `<Button>` + `<DropdownMenu>` — ReactNode icons/children, identical theming. Installs `button` + `dropdown-menu` as registry deps. | |
+| `slide-stepper` | An auto-advancing slide progress pill, stories-style — active dot stretches into a filling bar, tape-counter clipping, pause/replay circle, optional crossfade carousel (headless engine + vanilla pill + React wrappers). | [Demo](https://lloydhumphreys.github.io/components/demo/slide-stepper/) |
+| `slide-stepper-shadcn` | The same stepper composed shadcn-natively — Tailwind tokens, shadcn `<Button>` pause circle, lucide icons; hook + pill + carousel in one self-contained file. Installs `button` as a registry dep. | |
 
 ## Install a component
 

@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>slide-stepper — demo</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fafafa; --fg: #1b1b1f; --mut: #6b6b76; --line: #e2e2e8;
+    --panel: #ffffff; --code-bg: #f1f1f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #131316; --fg: #e7e7ec; --mut: #9a9aa5; --line: #2c2c33;
+      --panel: #1b1b20; --code-bg: #232329;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #131316; --fg: #e7e7ec; --mut: #9a9aa5; --line: #2c2c33;
+    --panel: #1b1b20; --code-bg: #232329;
+  }
+  :root[data-theme="light"] { color-scheme: light; }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .page { max-width: 880px; margin: 0 auto; padding: 40px 24px 64px; }
+  .masthead h1 { margin: 0; font-size: 26px; letter-spacing: -0.02em; }
+  .masthead p { margin: 8px 0 0; color: var(--mut); max-width: 62ch; }
+  .masthead code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 6px; padding: 2px 7px; font-size: 13px;
+  }
+  .install { margin-top: 14px; font-size: 13px; color: var(--mut); }
+  .back { display: inline-block; margin-bottom: 18px; font-size: 13px; color: var(--mut); text-decoration: none; }
+  .back:hover { color: var(--fg); }
+
+  .controls {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 20px;
+    margin: 28px 0 4px; font-size: 13px;
+  }
+  .control { display: flex; align-items: center; gap: 8px; }
+  .control > span { color: var(--mut); }
+  .seg {
+    display: inline-flex; border: 1px solid var(--line);
+    border-radius: 8px; overflow: hidden; background: var(--panel);
+  }
+  .seg button {
+    appearance: none; border: 0; margin: 0; padding: 5px 12px;
+    background: transparent; color: var(--mut); font: inherit; font-size: 13px; cursor: pointer;
+  }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button[aria-pressed="true"] { background: var(--code-bg); color: var(--fg); font-weight: 600; }
+
+  .stage {
+    margin: 26px 0 12px; border: 1px solid var(--line); border-radius: 14px;
+    background: var(--panel); padding: 36px; display: grid; place-items: center; min-height: 300px;
+  }
+  .stage-title {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--mut); margin: 30px 0 -14px;
+  }
+  .log {
+    margin-top: 14px; font-size: 12.5px; color: var(--mut);
+    font-variant-numeric: tabular-nums; min-height: 1.5em; text-align: center;
+  }
+  .log b { color: var(--fg); font-weight: 600; }
+
+  /* Demo slide cards for the carousel stage. */
+  .demo-slide {
+    width: min(520px, 62vw); height: 260px; border-radius: 16px;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 22px 24px; color: #fff; user-select: none;
+    background:
+      radial-gradient(120% 140% at 15% 0%, color-mix(in oklch, var(--slide-hue) 85%, white) 0%, transparent 55%),
+      linear-gradient(135deg, var(--slide-hue), color-mix(in oklch, var(--slide-hue) 55%, black));
+  }
+  .demo-slide .k {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.72;
+  }
+  .demo-slide .t { font-size: 22px; font-weight: 650; letter-spacing: -0.01em; margin-top: 2px; }
+  .demo-slide .d { font-size: 13px; opacity: 0.82; margin-top: 4px; max-width: 40ch; }
+
+  /* Stage B: the decoupled hook+pill layout. */
+  .duet { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+  .duet-card {
+    width: min(440px, 60vw); border: 1px solid var(--line); border-radius: 14px;
+    background: var(--bg); padding: 18px 22px; text-align: left;
+  }
+  .duet-card .who { font-size: 12px; color: var(--mut); }
+  .duet-card .quote { font-size: 15.5px; margin-top: 4px; }
+
+  .note { margin-top: 20px; font-size: 13px; color: var(--mut); max-width: 62ch; }
+  .note code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px;
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; }
+
+  /* ── API docs ── */
+  .docs { margin-top: 44px; border-top: 1px solid var(--line); padding-top: 28px; }
+  .docs h2 { font-size: 19px; letter-spacing: -0.015em; margin: 0 0 4px; }
+  .docs .lead { color: var(--mut); font-size: 14px; max-width: 68ch; margin: 0 0 8px; }
+  .docs h3 { font-size: 14px; margin: 30px 0 8px; }
+  .docs code {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px;
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 5px;
+  }
+  .docs pre {
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 14px; overflow-x: auto; font-size: 12.5px; line-height: 1.55;
+  }
+  .docs pre code { background: none; border: 0; padding: 0; font-size: inherit; }
+  .docs table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 8px 0 4px; }
+  .docs th {
+    text-align: left; font-weight: 600; font-size: 11.5px; color: var(--mut);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line);
+  }
+  .docs td {
+    vertical-align: top; padding: 7px 12px 7px 0; line-height: 1.5;
+    border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+  }
+  .docs td:first-child { white-space: nowrap; }
+  .docs td.t { color: var(--mut); font-size: 12px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  footer { margin-top: 22px; font-size: 13px; color: var(--mut); }
+  footer a { color: inherit; }
+</style>
+</head>
+<body>
+<div class="page">
+  <a class="back" href="../">← all demos</a>
+  <header class="masthead">
+    <h1>slide-stepper</h1>
+    <p>An auto-advancing slide progress indicator, stories-style: a pill of dots whose
+       active dot stretches into a bar that fills over the slide's duration, plus a
+       detached pause circle. With more slides than <code>clip</code>, the strip becomes a
+       tape counter — the active bar stays centered, pinned at the deck's ends. Tap a dot
+       to jump, swipe the pill (or the slides) for prev/next; pausing composes, so hovering
+       away never cancels an explicit pause.</p>
+    <p class="install">Install: <code>npx shadcn@latest add @lloydhumphreys/slide-stepper</code></p>
+  </header>
+
+  <div class="controls">
+    <div class="control">
+      <span>Orientation</span>
+      <div class="seg" id="seg-orientation">
+        <button type="button" data-value="horizontal" aria-pressed="true">Horizontal</button>
+        <button type="button" data-value="vertical">Vertical</button>
+      </div>
+    </div>
+    <div class="control">
+      <span>Clip</span>
+      <div class="seg" id="seg-clip">
+        <button type="button" data-value="all">All 10</button>
+        <button type="button" data-value="5" aria-pressed="true">5 of 10</button>
+        <button type="button" data-value="3">3 of 10</button>
+      </div>
+    </div>
+    <div class="control">
+      <span>Timing</span>
+      <div class="seg" id="seg-timing">
+        <button type="button" data-value="fast">2s</button>
+        <button type="button" data-value="normal" aria-pressed="true">4s</button>
+        <button type="button" data-value="mixed">Mixed</button>
+      </div>
+    </div>
+    <div class="control">
+      <span>End</span>
+      <div class="seg" id="seg-loop">
+        <button type="button" data-value="loop" aria-pressed="true">Loop</button>
+        <button type="button" data-value="stop">Stop</button>
+      </div>
+    </div>
+    <div class="control">
+      <span>Size</span>
+      <div class="seg" id="seg-size">
+        <button type="button" data-value="sm">sm</button>
+        <button type="button" data-value="md" aria-pressed="true">md</button>
+        <button type="button" data-value="lg">lg</button>
+      </div>
+    </div>
+    <div class="control">
+      <span>Theme</span>
+      <div class="seg" id="seg-theme">
+        <button type="button" data-value="auto" aria-pressed="true">Auto</button>
+        <button type="button" data-value="light">Light</button>
+        <button type="button" data-value="dark">Dark</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div id="mount-carousel"></div>
+  </div>
+  <div class="log" id="log">Slides advance on their own — hover to pause, swipe or tap dots to navigate.</div>
+
+  <p class="note">
+    Everything above is one <code>createSlideStepperCarousel()</code> call. The pause set
+    is doing the quiet work: hovering holds a <code>'hover'</code> reason, switching tabs a
+    <code>'hidden'</code> one, scrolling the stage away an <code>'offscreen'</code> one, a
+    swipe-in-progress a <code>'gesture'</code> one — and the button toggles
+    <code>'user'</code>. The timer runs only while the set is empty, so clicking pause and
+    then wandering off keeps it paused, exactly as you'd hope.
+  </p>
+  <p class="note">
+    With <b>Clip</b> at 5-of-10 the strip translates so the active bar sits dead-center
+    once you're past the middle and pins flush at the ends — pure CSS
+    <code>calc()</code>/<code>clamp()</code> from three integers. Set <b>End</b> to Stop
+    and let it finish: the pause circle becomes <b>Replay</b>. Mixed timing gives slide 1
+    two seconds and slide 4 nine, via <code>durations: { 0: 2000, 3: 9000 }</code>.
+  </p>
+
+  <p class="stage-title">Bring your own content — engine + pill, no carousel</p>
+  <div class="stage">
+    <div class="duet">
+      <div class="duet-card" id="duet-card"></div>
+      <div id="mount-pill"></div>
+    </div>
+  </div>
+  <p class="note">
+    The decoupled mode: the pill owns the engine and exposes it
+    (<code>createSlideStepper({ count }).engine</code>); a hand-rolled card re-renders from
+    the same <code>engine.subscribe()</code>. Anything can be the "slide" — the indicator
+    never needs to know. Equally valid the other way round: create the engine yourself and
+    pass it in as <code>{ engine }</code> — its clock starts on the first
+    <code>subscribe()</code> (construction is side-effect-free). In React this is
+    the <code>useSlideStepper()</code> hook and <code>&lt;SlideStepper engine={…} /&gt;</code>.
+  </p>
+
+  <section class="docs">
+    <h2>API</h2>
+    <p class="lead">
+      The vanilla core (<code>slide-stepper.ts</code> + <code>slide-stepper-carousel.ts</code>,
+      zero dependencies). The React wrappers (<code>slide-stepper-react.tsx</code>,
+      <code>slide-stepper-carousel-react.tsx</code>) expose the same options as props plus a
+      <code>useSlideStepper</code> hook; <code>slide-stepper-shadcn</code> is a separate
+      registry item with the whole thing rebuilt from Tailwind tokens, shadcn's
+      <code>&lt;Button&gt;</code>, and lucide icons — self-contained in one file.
+    </p>
+
+    <pre><code>import { createSlideStepperCarousel } from './slide-stepper-carousel'
+
+const carousel = createSlideStepperCarousel({
+  slides: [imgA, imgB, cardC],   // HTMLElements (or (i) => HTMLElement, with count)
+  duration: 5000,
+  durations: { 2: 9000 },        // slide 3 runs longer
+  clip: 5,                       // tape-counter window
+  loop: true,
+  onChange(i, prev, reason) { analytics(reason) },
+})
+host.appendChild(carousel.element)
+
+// …or decoupled: one engine, your own content
+import { createStepperEngine, createSlideStepper } from './slide-stepper'
+const engine = createStepperEngine({ count: 8, duration: 4000 })
+engine.subscribe(({ index }) => showMySlide(index))   // first subscribe starts the clock
+host.appendChild(createSlideStepper({ engine, clip: 5 }).element)</code></pre>
+
+    <h3><code>createStepperEngine(options) → StepperEngine</code></h3>
+    <table>
+      <tr><th>Option</th><th>Type</th><th></th></tr>
+      <tr><td><code>count</code></td><td class="t">number</td>
+        <td>How many slides. Required.</td></tr>
+      <tr><td><code>duration</code></td><td class="t">number = 5000</td>
+        <td>Default per-slide ms.</td></tr>
+      <tr><td><code>durations</code></td><td class="t">number[] | Record&lt;number, number&gt;</td>
+        <td>Sparse per-slide overrides by index; missing entries fall back to
+            <code>duration</code>.</td></tr>
+      <tr><td><code>loop</code></td><td class="t">boolean = true</td>
+        <td>Wrap after the last slide. Off: the deck stops (<code>done</code>) and the
+            pause button becomes Replay.</td></tr>
+      <tr><td><code>startPaused</code></td><td class="t">boolean</td>
+        <td>Begin with a <code>'user'</code> pause held.</td></tr>
+      <tr><td><code>index</code></td><td class="t">number = 0</td>
+        <td>Initial slide.</td></tr>
+      <tr><td><code>onChange</code></td><td class="t">(index, prev, reason) → void</td>
+        <td>Index changed. <code>reason</code> is <code>'advance'</code> (timer),
+            <code>'loop'</code>, <code>'next'</code>/<code>'prev'</code> (swipe/arrows), or
+            <code>'goto'</code> (tap, Home/End, replay).</td></tr>
+      <tr><td><code>onComplete</code></td><td class="t">(index) → void</td>
+        <td>A slide's timer finished, just before leaving it.</td></tr>
+      <tr><td><code>onPauseChange</code></td><td class="t">(paused, reasons) → void</td>
+        <td>The timer stopped/started — fires on empty↔non-empty transitions of the reason
+            set, not on every reason.</td></tr>
+    </table>
+
+    <h3><code>StepperEngine</code></h3>
+    <table>
+      <tr><th>Member</th><th></th></tr>
+      <tr><td><code>getState()</code></td>
+        <td><code>{ index, count, progress, paused, pauseReasons, done }</code> —
+            <code>progress</code> is computed from <code>performance.now()</code> on
+            demand; the engine never ticks.</td></tr>
+      <tr><td><code>subscribe(fn)</code></td>
+        <td>State-change notifications (index/pause/done — not continuous). Returns
+            unsubscribe.</td></tr>
+      <tr><td><code>next()</code> / <code>prev()</code></td>
+        <td>Step one slide; wraps only when looping.</td></tr>
+      <tr><td><code>goTo(i, { restart })</code></td>
+        <td>Jump; restarts that slide's progress (default) and clears <code>done</code>.</td></tr>
+      <tr><td><code>pause(reason?)</code> / <code>resume(reason?)</code></td>
+        <td>Add/remove a reason (<code>'user'</code> default; also <code>'hover'</code>,
+            <code>'hidden'</code>, <code>'offscreen'</code>, <code>'gesture'</code>,
+            <code>'focus'</code>). Runs only while the set is empty; resuming continues
+            from the frozen fraction.</td></tr>
+      <tr><td><code>toggleUserPause()</code></td>
+        <td>The pause button: toggles <code>'user'</code> — or replays from slide 1 when
+            <code>done</code>.</td></tr>
+      <tr><td><code>durationFor(i)</code> / <code>isPausedBy(r)</code></td>
+        <td>Lookups.</td></tr>
+      <tr><td><code>setOptions(patch)</code></td>
+        <td>Patch count/duration(s)/loop live; in-flight elapsed time is preserved.</td></tr>
+      <tr><td><code>destroy()</code></td><td>Stop the timer, drop subscribers.</td></tr>
+    </table>
+
+    <h3><code>createSlideStepper(options) → SlideStepper</code> — the pill</h3>
+    <table>
+      <tr><th>Option</th><th>Type</th><th></th></tr>
+      <tr><td><code>engine</code></td><td class="t">StepperEngine</td>
+        <td>Share an engine you own; engine options on this object are then ignored.
+            Omitted: the pill creates its own from the engine options above.</td></tr>
+      <tr><td><code>orientation</code></td><td class="t">'horizontal' | 'vertical'</td>
+        <td>Vertical stacks the dots and puts the pause circle below.</td></tr>
+      <tr><td><code>clip</code></td><td class="t">number</td>
+        <td>Max dots visible; more slides become the clamped, centered tape counter.
+            Undefined or ≥ count shows everything.</td></tr>
+      <tr><td><code>showPause</code></td><td class="t">boolean = true</td>
+        <td>The detached pause/play/replay circle.</td></tr>
+      <tr><td><code>pauseOnHover</code></td><td class="t">boolean = true</td>
+        <td>Hold <code>'hover'</code> while pointing at the pill (fine pointers only).</td></tr>
+      <tr><td><code>pauseWhenHidden</code></td><td class="t">boolean = true</td>
+        <td>Hold <code>'hidden'</code> while the tab is backgrounded.</td></tr>
+      <tr><td><code>pauseWhenOffscreen</code></td><td class="t">boolean = true</td>
+        <td>Hold <code>'offscreen'</code> while scrolled out of view
+            (<code>offscreenThreshold</code> tunes the IntersectionObserver).</td></tr>
+      <tr><td><code>size</code></td><td class="t">'sm' | 'md' | 'lg'</td>
+        <td>Geometry preset; every dimension is also a <code>--stepper-*</code> variable.</td></tr>
+      <tr><td><code>slideIds</code></td><td class="t">(string | undefined)[]</td>
+        <td>Ids of your own slide elements → each dot's <code>aria-controls</code>.</td></tr>
+      <tr><td><code>labels</code></td><td class="t">{ root?, slide?, pause?, play?, replay? }</td>
+        <td>Accessible names.</td></tr>
+      <tr><td><code>injectStyles</code></td><td class="t">boolean = true</td>
+        <td>Auto-inject CSS; set false and ship <code>stepperStyles()</code> yourself.</td></tr>
+      <tr><td><code>className</code></td><td class="t">string</td>
+        <td>Extra class(es) on the root.</td></tr>
+    </table>
+    <p class="note" style="margin-top:8px">
+      Instance: <code>element</code>, <code>engine</code>, <code>getState()</code>,
+      <code>next()</code>/<code>prev()</code>/<code>goTo(i)</code>,
+      <code>pause()</code>/<code>resume()</code>/<code>toggle()</code>,
+      <code>setState(patch)</code>, <code>destroy()</code>. Interactions: tap a dot (or the
+      pill padding — nearest dot wins) to jump; swipe along the pill for prev/next; arrows,
+      Home and End on the focused strip; Enter/Space on the pause circle.
+    </p>
+
+    <h3><code>createSlideStepperCarousel(options) → SlideStepperCarousel</code></h3>
+    <table>
+      <tr><th>Option</th><th>Type</th><th></th></tr>
+      <tr><td><code>slides</code></td><td class="t">HTMLElement[] | (i) → HTMLElement</td>
+        <td>The content. A factory is called lazily (active slide + neighbors, cached);
+            pass <code>count</code> with it.</td></tr>
+      <tr><td><code>transitionMs</code></td><td class="t">number = 300</td>
+        <td>Crossfade duration.</td></tr>
+      <tr><td><code>pillPosition</code></td><td class="t">'top' | 'bottom' | 'left' | 'right'</td>
+        <td>Default bottom (horizontal pill) / right (vertical).</td></tr>
+      <tr><td><code>swipe</code></td><td class="t">boolean = true</td>
+        <td>Swipe the slide area for prev/next (axis follows orientation; page scroll on
+            the cross-axis is left alone via <code>touch-action</code>).</td></tr>
+      <tr><td><code>pauseOnFocusWithin</code></td><td class="t">boolean = true</td>
+        <td>Hold <code>'focus'</code> while keyboard focus is inside — the can't-hover
+            equivalent of hover-pause (WCAG 2.2.2).</td></tr>
+      <tr><td colspan="3" class="t">…plus every pill and engine option above. Instance:
+        <code>element</code>, <code>stepper</code>, <code>engine</code>,
+        <code>destroy()</code>.</td></tr>
+    </table>
+
+    <h3>Helpers</h3>
+    <table>
+      <tr><th>Export</th><th></th></tr>
+      <tr><td><code>attachAutoPause(el, engine, opts)</code></td>
+        <td>The hover/hidden/offscreen wiring as a standalone — attach it to any element
+            (returns detach, which also releases its reasons).</td></tr>
+      <tr><td><code>attachSwipeNav(el, opts)</code></td>
+        <td>The threshold-based swipe recognizer (returns detach). Swallows the click after
+            a swipe so a drag that started on a button doesn't also press it.</td></tr>
+      <tr><td><code>injectStepperStyles</code> / <code>stepperStyles</code> /
+            <code>injectCarouselStyles</code> / <code>carouselStyles</code></td>
+        <td>Inject the stylesheets / get their CSS text (SSR or CSP setups).</td></tr>
+    </table>
+
+    <h3>Behavior notes</h3>
+    <p class="note" style="margin-top:8px">
+      The JS timer is the authoritative clock; CSS only displays progress and is never
+      listened to — so pause freezes the bar at its exact fraction and resume continues
+      from it, and aggressive <code>prefers-reduced-motion</code> resets can't skew timing.
+      Engines are side-effect-free at construction and start on their first
+      <code>subscribe()</code> (a purely callback-driven engine with no subscriber starts
+      on its first <code>setOptions({})</code> / <code>goTo()</code>).
+      Under reduced motion the strip glide, bar stretch and crossfade all snap; the fill
+      sweep is kept deliberately — it <em>is</em> the progress information. The strip does
+      not mirror under RTL on purpose: it's elapsed time, not reading order, matching
+      stories UIs. No <code>aria-live</code> on auto-advancing content (per APG carousel
+      guidance) — compliance comes from the pause set instead.
+    </p>
+
+    <h3>Theming</h3>
+    <p class="note" style="margin-top:8px">
+      Consumes shadcn theme tokens when present (<code>--muted</code>,
+      <code>--muted-foreground</code>, <code>--border</code>, <code>--primary</code>,
+      <code>--foreground</code>, <code>--ring</code>) with zinc <code>light-dark()</code>
+      fallbacks — standalone it still reads correctly in both themes. Override
+      independently via <code>--stepper-pill-bg</code>, <code>--stepper-dot</code>,
+      <code>--stepper-bar-bg</code>, <code>--stepper-fill</code>,
+      <code>--stepper-pause-fg</code>, <code>--stepper-ring</code>,
+      <code>--stepper-radius</code>, <code>--stepper-dot-size</code>,
+      <code>--stepper-bar-size</code>, <code>--stepper-gap</code>,
+      <code>--stepper-hit-size</code>, <code>--stepper-pause-gap</code>,
+      <code>--stepper-strip-ms</code>, <code>--stepper-crossfade-ms</code>,
+      <code>--stepper-crossfade-scale</code>.
+    </p>
+  </section>
+
+  <footer>
+    Built from <code>registry/slide-stepper/slide-stepper-carousel.ts</code> via
+    <code>npm run demo:build</code> ·
+    <a href="https://github.com/lloydhumphreys/components">github.com/lloydhumphreys/components</a>
+  </footer>
+</div>
+
+<!-- Bump ?v= whenever the bundle changes: GitHub Pages caches for 10 minutes. -->
+<script src="./slide-stepper.js?v=5"></script>
+<script>
+  const { createSlideStepperCarousel, createStepperEngine, createSlideStepper } = SlideStepper
+
+  const SLIDES = [
+    { hue: 'oklch(0.62 0.19 250)', title: 'Harbor lights',   d: 'Ten slides, one pill — watch the tape counter keep the bar centered.' },
+    { hue: 'oklch(0.62 0.17 180)', title: 'Tide tables',     d: 'Tap any dot to jump straight there; its bar restarts from zero.' },
+    { hue: 'oklch(0.65 0.15 140)', title: 'Field notes',     d: 'Swipe across the slide (or the pill) for prev and next.' },
+    { hue: 'oklch(0.68 0.16 90)',  title: 'Long exposure',   d: 'In Mixed timing this slide takes nine seconds instead of four.' },
+    { hue: 'oklch(0.66 0.19 55)',  title: 'Ridge line',      d: 'Hover anywhere over the carousel and the clock stops.' },
+    { hue: 'oklch(0.62 0.21 25)',  title: 'Ember study',     d: 'Click pause, then hover away — it stays paused. Reasons compose.' },
+    { hue: 'oklch(0.58 0.22 0)',   title: 'Night market',    d: 'Switch tabs and come back: not a millisecond was lost.' },
+    { hue: 'oklch(0.55 0.2 310)',  title: 'Violet hour',     d: 'Scroll the page away and back — same story, offscreen pauses too.' },
+    { hue: 'oklch(0.58 0.16 280)', title: 'Deep water',      d: 'Arrow keys work once a dot has focus; Home and End jump to the ends.' },
+    { hue: 'oklch(0.65 0.03 260)', title: 'Last light',      d: 'With End set to Stop, the pause circle becomes Replay right about now.' },
+  ]
+
+  const makeSlide = (i) => {
+    const s = SLIDES[i]
+    const el = document.createElement('div')
+    el.className = 'demo-slide'
+    el.style.setProperty('--slide-hue', s.hue)
+    el.innerHTML = `<div class="k">Slide ${i + 1} / ${SLIDES.length}</div>` +
+      `<div class="t">${s.title}</div><div class="d">${s.d}</div>`
+    return el
+  }
+
+  const mount = document.getElementById('mount-carousel')
+  const log = document.getElementById('log')
+  const state = { orientation: 'horizontal', clip: '5', timing: 'normal', loop: true, size: 'md' }
+  let carousel = null
+
+  const REASON = {
+    advance: 'auto-advanced', loop: 'looped back', next: 'stepped forward',
+    prev: 'stepped back', goto: 'jumped',
+  }
+
+  function mountCarousel() {
+    if (carousel) { carousel.destroy(); carousel.element.remove() }
+    carousel = createSlideStepperCarousel({
+      slides: SLIDES.map((_, i) => makeSlide(i)),
+      duration: state.timing === 'fast' ? 2000 : 4000,
+      durations: state.timing === 'mixed' ? { 0: 2000, 3: 9000 } : undefined,
+      loop: state.loop,
+      orientation: state.orientation,
+      clip: state.clip === 'all' ? undefined : Number(state.clip),
+      size: state.size,
+      onChange(i, prev, reason) {
+        log.innerHTML = `${REASON[reason] ?? reason} · <b>${SLIDES[prev].title}</b> → <b>${SLIDES[i].title}</b>`
+      },
+      onPauseChange(paused, reasons) {
+        if (paused) log.innerHTML = `paused · <b>${reasons.join(' + ')}</b>`
+      },
+    })
+    mount.replaceChildren(carousel.element)
+  }
+
+  // ── Stage B: shared engine, hand-rolled content ──
+  const QUOTES = [
+    { who: 'The engine',   quote: 'I only count time and hold an index. I have never seen a pixel.' },
+    { who: 'The pill',     quote: 'I subscribe to the engine and draw dots. The card is none of my business.' },
+    { who: 'The card',     quote: 'Same subscription, different render. That’s the whole trick.' },
+    { who: 'The pause set', quote: 'user + hover + hidden + offscreen + gesture + focus — I run only when empty.' },
+    { who: 'The tape',     quote: 'Past the midpoint I keep the bar centered; at the ends I pin.' },
+    { who: 'The timer',    quote: 'setTimeout is the clock. CSS just makes it look effortless.' },
+  ]
+  const duetCard = document.getElementById('duet-card')
+  // The pill owns the engine; the card is simply a second subscriber to it. (A bare
+  // createStepperEngine() works too — its clock starts on the first subscribe.)
+  const duetPill = createSlideStepper({ count: QUOTES.length, duration: 3500 })
+  const duetEngine = duetPill.engine
+  duetEngine.subscribe(renderDuet)
+  function renderDuet(s) {
+    const q = QUOTES[s.index]
+    duetCard.innerHTML = `<div class="who">${q.who}${s.paused ? ' · paused' : ''}</div>` +
+      `<div class="quote">“${q.quote}”</div>`
+  }
+  renderDuet(duetEngine.getState())
+  document.getElementById('mount-pill').appendChild(duetPill.element)
+
+  mountCarousel()
+
+  function segment(id, onChange) {
+    const seg = document.getElementById(id)
+    seg.addEventListener('click', (e) => {
+      const btn = e.target.closest('button')
+      if (!btn) return
+      for (const b of seg.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b === btn))
+      onChange(btn.dataset.value)
+    })
+  }
+
+  segment('seg-orientation', (v) => { state.orientation = v; mountCarousel() })
+  segment('seg-clip', (v) => { state.clip = v; mountCarousel() })
+  segment('seg-timing', (v) => { state.timing = v; mountCarousel() })
+  segment('seg-loop', (v) => { state.loop = v === 'loop'; mountCarousel() })
+  segment('seg-size', (v) => { state.size = v; mountCarousel() })
+  segment('seg-theme', (v) => {
+    if (v === 'auto') delete document.documentElement.dataset.theme
+    else document.documentElement.dataset.theme = v
+  })
+</script>
+</body>
+</html>
