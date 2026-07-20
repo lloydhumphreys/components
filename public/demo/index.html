@@ -6,60 +6,314 @@
 <title>@lloydhumphreys/components — demos</title>
 <style>
   :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
   body {
     margin: 0;
-    display: grid;
-    place-items: center;
-    min-height: 100vh;
     background: light-dark(#fafafa, #131316);
     color: light-dark(#1b1b1f, #e7e7ec);
     font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
   }
-  main { max-width: 560px; padding: 24px; }
+  main { max-width: 1100px; margin: 0 auto; padding: 48px 24px; }
   h1 { font-size: 24px; margin: 0 0 6px; letter-spacing: -0.02em; }
-  p.lead { color: light-dark(#6b6b76, #9a9aa5); margin: 0 0 20px; }
-  ul { list-style: none; padding: 0; margin: 0; }
-  li {
-    border: 1px solid light-dark(#e2e2e8, #2c2c33);
+  p.lead { color: light-dark(#6b6b76, #9a9aa5); margin: 0 0 28px; }
+
+  .cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr; gap: 16px; }
+  @media (min-width: 640px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 1024px) { .cards { grid-template-columns: repeat(3, 1fr); } }
+
+  .card {
+    position: relative;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    border-radius: 16px;
+    border: 1px solid transparent;
     background: light-dark(#ffffff, #1b1b20);
-    border-radius: 12px;
-    padding: 14px 18px;
-    margin-bottom: 10px;
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
   }
-  li b { font-size: 15px; }
-  li p { margin: 4px 0 8px; font-size: 13.5px; color: light-dark(#6b6b76, #9a9aa5); }
-  a { color: #3b82f6; text-decoration: none; font-size: 13.5px; }
+  .card:hover {
+    border-color: light-dark(#e2e2e8, #2c2c33);
+    transform: translateY(-2px);
+    box-shadow:
+      0 10px 15px -3px light-dark(rgba(214, 211, 209, 0.5), rgba(0, 0, 0, 0.4)),
+      0 4px 6px -4px light-dark(rgba(214, 211, 209, 0.5), rgba(0, 0, 0, 0.4));
+  }
+
+  /* Decorative "open" chip, revealed on hover (clicks fall through to the card link). */
+  .go {
+    position: absolute; top: 16px; right: 16px; z-index: 2;
+    width: 36px; height: 36px; display: grid; place-items: center;
+    border-radius: 999px;
+    border: 1px solid light-dark(#e2e2e8, #2c2c33);
+    background: light-dark(#fafafa, #131316);
+    color: light-dark(#55555f, #c9c9d3);
+    font-size: 14px;
+    opacity: 0; transform: translateY(-4px);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+  }
+  .card:hover .go { opacity: 1; transform: translateY(0); }
+
+  /* The live component preview. Inert + pointer-events:none: it's a picture that moves —
+     hover is read on the card, clicks belong to the stretched link. */
+  .media { aspect-ratio: 1; display: grid; place-items: center; padding: 28px; pointer-events: none; }
+
+  .card-body { padding: 0 20px 20px; }
+  .card-body h2 { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.4; letter-spacing: -0.01em; }
+  .card-body h2 a { color: inherit; text-decoration: none; }
+  /* Stretched link: the title anchor's overlay makes the whole card clickable. */
+  .card-body h2 a::after { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: 16px; }
+  .card-body h2 a:focus-visible { outline: none; }
+  .card-body h2 a:focus-visible::after { outline: 2px solid #3b82f6; outline-offset: 2px; }
+  .card-body p {
+    margin: 4px 0 0; font-size: 13.5px; line-height: 1.5;
+    color: light-dark(#6b6b76, #9a9aa5);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .tags {
+    margin-top: 10px; display: flex; flex-wrap: wrap; gap: 3px 10px;
+    font-size: 12px; color: light-dark(#8f8f9a, #7e7e89);
+  }
+
+  .badge {
+    display: inline-block; vertical-align: 1px; margin-left: 6px;
+    font-size: 10.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+    color: light-dark(#92400e, #fbbf24);
+    background: light-dark(#fef3c7, #451a03);
+    border: 1px solid light-dark(#fcd34d, #92400e);
+    border-radius: 999px; padding: 1px 8px;
+  }
+
+  a { color: #3b82f6; text-decoration: none; }
   a:hover { text-decoration: underline; }
-  footer { margin-top: 16px; font-size: 13px; }
+  .card a:hover { text-decoration: none; }
+  footer { margin-top: 28px; font-size: 13px; color: light-dark(#6b6b76, #9a9aa5); }
   footer a { color: inherit; }
+
+  /* ── scroll-rail preview: a skeleton document that scrolls itself on hover ── */
+  .rail-demo { position: relative; width: min(230px, 100%); height: 205px; }
+  .rail-doc {
+    height: 100%; overflow-y: auto;
+    padding: 14px 34px 14px 16px;
+    border: 1px solid light-dark(#ececf1, #26262c);
+    border-radius: 12px;
+    scrollbar-width: none;
+  }
+  .rail-doc::-webkit-scrollbar { display: none; }
+  .rail-doc section { margin-bottom: 18px; }
+  .sk-h, .sk-l { border-radius: 4px; }
+  .sk-h { height: 10px; width: 55%; background: light-dark(#d6d6de, #3c3c45); margin-bottom: 8px; }
+  section[data-level="2"] .sk-h { width: 40%; height: 8px; }
+  .sk-l { height: 6px; background: light-dark(#ebebf0, #26262d); margin-bottom: 6px; }
+
+  /* ── slide-stepper preview slides ── */
+  .mini-slide {
+    width: 200px; height: 128px; border-radius: 12px;
+    background: linear-gradient(140deg, var(--h), color-mix(in oklab, var(--h) 65%, black));
+    display: flex; align-items: flex-end; padding: 12px;
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 12px; font-weight: 600; letter-spacing: 0.01em;
+  }
 </style>
 </head>
 <body>
 <main>
   <h1>Component demos</h1>
-  <p class="lead">Standalone demo pages for <code>@lloydhumphreys/components</code>, one per component.</p>
-  <ul>
-    <li>
-      <b>scroll-rail</b>
-      <p>A dependency-free scroll-position navigation rail: ticks pinned to a scroll
-         container's edge, with hover previews and click-to-scroll.</p>
-      <a href="./scroll-rail/">Open demo →</a>
+  <p class="lead">Standalone demo pages for <code>@lloydhumphreys/components</code>, one per component.
+     Hover a card to see the component run.</p>
+
+  <ul class="cards">
+    <li class="card" id="card-scroll-rail">
+      <span class="go" aria-hidden="true">↗</span>
+      <div class="media" inert>
+        <div class="rail-demo" id="rail-demo">
+          <div class="rail-doc" id="rail-doc"></div>
+        </div>
+      </div>
+      <div class="card-body">
+        <h2><a href="./scroll-rail/">scroll-rail</a></h2>
+        <p>A dependency-free scroll-position navigation rail: ticks pinned to a scroll
+           container's edge, with hover previews and click-to-scroll.</p>
+        <div class="tags"><span>#navigation</span><span>#scroll</span><span>#zero-deps</span></div>
+      </div>
     </li>
-    <li>
-      <b>workflow-button</b>
-      <p>A split button that drives a flow through stages: primary advances one step,
-         the caret menu jumps anywhere the flow allows.</p>
-      <a href="./workflow-button/">Open demo →</a>
+
+    <li class="card" id="card-workflow-button">
+      <span class="go" aria-hidden="true">↗</span>
+      <div class="media" inert>
+        <div id="wf-mount"></div>
+      </div>
+      <div class="card-body">
+        <h2><a href="./workflow-button/">workflow-button</a><span class="badge">Experimental</span></h2>
+        <p>A split button that drives a flow through stages: primary advances one step,
+           the caret menu jumps anywhere the flow allows.</p>
+        <div class="tags"><span>#split-button</span><span>#workflow</span><span>#shadcn</span></div>
+      </div>
     </li>
-    <li>
-      <b>slide-stepper</b>
-      <p>An auto-advancing slide progress pill, stories-style: the active dot stretches
-         into a filling bar, clips to N dots as a centered tape counter, with a detached
-         pause circle and an optional crossfade carousel.</p>
-      <a href="./slide-stepper/">Open demo →</a>
+
+    <li class="card" id="card-slide-stepper">
+      <span class="go" aria-hidden="true">↗</span>
+      <div class="media" inert>
+        <div id="ss-mount"></div>
+      </div>
+      <div class="card-body">
+        <h2><a href="./slide-stepper/">slide-stepper</a></h2>
+        <p>An auto-advancing slide progress pill, stories-style: the active dot stretches
+           into a filling bar, with a tape counter and an optional crossfade carousel.</p>
+        <div class="tags"><span>#carousel</span><span>#stories</span><span>#shadcn</span></div>
+      </div>
     </li>
   </ul>
+
   <footer><a href="https://github.com/lloydhumphreys/components">github.com/lloydhumphreys/components</a></footer>
 </main>
+
+<!-- Bump ?v= whenever a bundle changes: GitHub Pages caches for 10 minutes. -->
+<script src="./scroll-rail/scroll-rail.js?v=6"></script>
+<script src="./workflow-button/workflow-button.js?v=8"></script>
+<script src="./slide-stepper/slide-stepper.js?v=5"></script>
+<script>
+  const { createScrollRail } = ScrollRail
+  const { createWorkflowButton } = WorkflowButton
+  const { createSlideStepperCarousel } = SlideStepper
+
+  // The previews are inert; hover on the card drives them. Skip the choreography for
+  // reduced-motion users and on touch (no hover to drive it) — cards stay static.
+  const animate =
+    !matchMedia('(prefers-reduced-motion: reduce)').matches &&
+    matchMedia('(hover: hover) and (pointer: fine)').matches
+  const onCardHover = (card, start, stop) => {
+    if (!animate) return
+    card.addEventListener('mouseenter', start)
+    card.addEventListener('mouseleave', stop)
+  }
+
+  // ── scroll-rail: skeleton doc + rail; hover tweens scrollTop down and back ──
+  {
+    const doc = document.getElementById('rail-doc')
+    const SECTIONS = [
+      { label: 'Overview',    level: 1, lines: [100, 92, 78] },
+      { label: 'Quick start', level: 2, lines: [96, 60] },
+      { label: 'Options',     level: 2, lines: [88, 97, 72] },
+      { label: 'Theming',     level: 1, lines: [94, 83] },
+      { label: 'Recipes',     level: 2, lines: [90, 99, 65] },
+      { label: 'API',         level: 1, lines: [86, 74] },
+    ]
+    const items = SECTIONS.map((s, i) => {
+      const section = document.createElement('section')
+      section.dataset.level = s.level
+      const h = document.createElement('div')
+      h.className = 'sk-h'
+      section.appendChild(h)
+      for (const w of s.lines) {
+        const l = document.createElement('div')
+        l.className = 'sk-l'
+        l.style.width = w + '%'
+        section.appendChild(l)
+      }
+      doc.appendChild(section)
+      return { id: 's' + i, target: section, label: s.label, level: s.level }
+    })
+    const rail = createScrollRail({ scrollContainer: doc, items, activationOffset: 40 })
+    document.getElementById('rail-demo').appendChild(rail.element)
+
+    let raf = null, t0 = null
+    const PERIOD = 6000 // one full glide down and back
+    const step = (now) => {
+      if (t0 === null) t0 = now
+      const range = doc.scrollHeight - doc.clientHeight
+      const phase = ((now - t0) % PERIOD) / PERIOD
+      doc.scrollTop = ((1 - Math.cos(phase * 2 * Math.PI)) / 2) * range
+      raf = requestAnimationFrame(step)
+    }
+    onCardHover(document.getElementById('card-scroll-rail'),
+      () => {
+        if (raf !== null) return
+        t0 = null
+        rail.element.style.opacity = '1' // the rail's resting state is half-faded
+        raf = requestAnimationFrame(step)
+      },
+      () => {
+        cancelAnimationFrame(raf)
+        raf = null
+        rail.element.style.opacity = ''
+        doc.scrollTop = 0
+      })
+  }
+
+  // ── workflow-button: hover walks the flow draft → review → approved → published ──
+  {
+    const icon = (inner) => () => {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+      svg.setAttribute('viewBox', '0 0 24 24')
+      svg.setAttribute('fill', 'none')
+      svg.setAttribute('stroke', 'currentColor')
+      svg.setAttribute('stroke-width', '2')
+      svg.setAttribute('stroke-linecap', 'round')
+      svg.setAttribute('stroke-linejoin', 'round')
+      svg.innerHTML = inner
+      return svg
+    }
+    const steps = [
+      { id: 'draft',     label: 'Draft',                                          color: '#9aa0aa',
+        icon: icon('<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>') },
+      { id: 'review',    label: 'In review',   advanceLabel: 'Submit for review', color: '#e0a52a', advanceVariant: 'default',
+        icon: icon('<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>') },
+      { id: 'approved',  label: 'Approved',    advanceLabel: 'Approve',           color: '#4a8fe7',
+        icon: icon('<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>') },
+      { id: 'published', label: 'Published',   advanceLabel: 'Publish',           color: '#2a9d8f', advanceVariant: 'destructive',
+        icon: icon('<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>') },
+    ]
+    const wf = createWorkflowButton({ steps, current: 'draft', variant: 'outline', onMove() {} })
+    document.getElementById('wf-mount').appendChild(wf.element)
+
+    let timer = null
+    onCardHover(document.getElementById('card-workflow-button'),
+      () => {
+        if (timer !== null) return
+        timer = setInterval(() => {
+          if (wf.getAdvanceTarget()) wf.advance()
+          else wf.setState({ current: 'draft' })
+        }, 1000)
+      },
+      () => {
+        clearInterval(timer)
+        timer = null
+        wf.setState({ current: 'draft' })
+      })
+  }
+
+  // ── slide-stepper: starts paused; hover releases the clock, leave rewinds ──
+  {
+    const SLIDES = [
+      { hue: 'oklch(0.62 0.19 250)', title: 'Harbor lights' },
+      { hue: 'oklch(0.65 0.15 140)', title: 'Field notes' },
+      { hue: 'oklch(0.66 0.19 55)',  title: 'Ridge line' },
+      { hue: 'oklch(0.55 0.2 310)',  title: 'Violet hour' },
+    ]
+    const carousel = createSlideStepperCarousel({
+      slides: SLIDES.map((s) => {
+        const el = document.createElement('div')
+        el.className = 'mini-slide'
+        el.style.setProperty('--h', s.hue)
+        el.textContent = s.title
+        return el
+      }),
+      duration: 1400,
+      loop: true,
+      startPaused: true,
+      size: 'sm',
+      showPause: false,
+      swipe: false,
+    })
+    document.getElementById('ss-mount').appendChild(carousel.element)
+
+    onCardHover(document.getElementById('card-slide-stepper'),
+      () => carousel.engine.resume('user'),
+      () => {
+        carousel.engine.pause('user')
+        carousel.engine.goTo(0, { restart: true })
+      })
+  }
+</script>
 </body>
 </html>
