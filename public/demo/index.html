@@ -113,6 +113,12 @@
     color: rgba(255, 255, 255, 0.92);
     font-size: 12px; font-weight: 600; letter-spacing: 0.01em;
   }
+
+  /* ── steps preview: narrow on purpose, so it runs in its collapsed summary mode ── */
+  .steps-mini { width: min(240px, 100%); }
+
+  /* ── social-post preview: a compact card cycling through quoted posts on hover ── */
+  .social-post-mini { width: min(255px, 100%); }
 </style>
 </head>
 <body>
@@ -162,19 +168,48 @@
         <div class="tags"><span>#carousel</span><span>#stories</span><span>#shadcn</span></div>
       </div>
     </li>
+    <li class="card" id="card-steps">
+      <span class="go" aria-hidden="true">↗</span>
+      <div class="media" inert>
+        <div class="steps-mini" id="steps-mount"></div>
+      </div>
+      <div class="card-body">
+        <h2><a href="./steps/">steps</a><span class="badge">Experimental</span></h2>
+        <p>A 1-2-3-4 wizard step indicator: earned forward progress, jump-back to reached
+           steps, and a container-query collapse to a compact summary line.</p>
+        <div class="tags"><span>#wizard</span><span>#stepper</span><span>#shadcn</span></div>
+      </div>
+    </li>
+    <li class="card" id="card-social-post">
+      <span class="go" aria-hidden="true">↗</span>
+      <div class="media" inert>
+        <div class="social-post-mini" id="social-post-mount"></div>
+      </div>
+      <div class="card-body">
+        <h2><a href="./social-post/">social-post</a><span class="badge">Experimental</span></h2>
+        <p>A platform-neutral social post embed card: quotes from any network rendered
+           uniformly — tinted inert mentions and hashtags, a 1–4 image grid, outline and
+           filled variants, and a single "Source" link.</p>
+        <div class="tags"><span>#embed</span><span>#card</span><span>#shadcn</span></div>
+      </div>
+    </li>
   </ul>
 
   <footer><a href="https://github.com/lloydhumphreys/components">github.com/lloydhumphreys/components</a></footer>
 </main>
 
 <!-- Bump ?v= whenever a bundle changes: GitHub Pages caches for 10 minutes. -->
-<script src="./scroll-rail/scroll-rail.js?v=6"></script>
-<script src="./workflow-button/workflow-button.js?v=8"></script>
-<script src="./slide-stepper/slide-stepper.js?v=5"></script>
+<script src="./scroll-rail/scroll-rail.js?v=7"></script>
+<script src="./workflow-button/workflow-button.js?v=9"></script>
+<script src="./slide-stepper/slide-stepper.js?v=6"></script>
+<script src="./steps/steps.js?v=2"></script>
+<script src="./social-post/social-post.js?v=3"></script>
 <script>
   const { createScrollRail } = ScrollRail
   const { createWorkflowButton } = WorkflowButton
   const { createSlideStepperCarousel } = SlideStepper
+  const { createSteps } = Steps
+  const { createSocialPost } = SocialPost
 
   // The previews are inert; hover on the card drives them. Skip the choreography for
   // reduced-motion users and on touch (no hover to drive it) — cards stay static.
@@ -312,6 +347,80 @@
       () => {
         carousel.engine.pause('user')
         carousel.engine.goTo(0, { restart: true })
+      })
+  }
+
+  // ── steps: hover walks the wizard forward and wraps; leave resets it ──
+  {
+    const wizard = createSteps({
+      steps: [
+        { title: 'Account', description: 'Username and password.' },
+        { title: 'Payment', description: 'Card details, charged never.' },
+        { title: 'Team',    description: 'Invite a few teammates.' },
+        { title: 'Review',  description: 'Check everything, submit.' },
+      ],
+      size: 'sm',
+    })
+    document.getElementById('steps-mount').appendChild(wizard.element)
+
+    let timer = null
+    onCardHover(document.getElementById('card-steps'),
+      () => {
+        if (timer !== null) return
+        timer = setInterval(() => {
+          if (wizard.getState().isLast) wizard.reset()
+          else wizard.next()
+        }, 900)
+      },
+      () => {
+        clearInterval(timer)
+        timer = null
+        wizard.reset()
+      })
+  }
+
+  // ── social-post: hover cycles through quoted posts; leave snaps back to the first ──
+  {
+    const av = (initials, h) => 'data:image/svg+xml;utf8,' + encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">` +
+      `<rect width="96" height="96" fill="hsl(${h} 50% 55%)"/>` +
+      `<text x="48" y="61" text-anchor="middle" font-family="system-ui" font-size="36" ` +
+      `font-weight="700" fill="rgba(255,255,255,0.92)">${initials}</text></svg>`)
+    const im = (h) => 'data:image/svg+xml;utf8,' + encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">` +
+      `<rect width="800" height="450" fill="hsl(${h} 45% 55%)"/>` +
+      `<circle cx="650" cy="110" r="70" fill="rgba(255,255,255,0.22)"/></svg>`)
+
+    // Every preset carries every optional key: setState clears fields via key: undefined,
+    // so a shorter object would leave the previous preset's leftovers in place.
+    const PRESETS = [
+      { name: 'Ada Lovelace', handle: 'adalovelace', verified: true, avatarUrl: av('AL', 250),
+        content: 'The engine weaves algebraic patterns, just as the loom weaves flowers. #computing',
+        images: [], date: 'Mar 3', link: '#' },
+      { name: 'Grace Hopper', handle: 'ghopper', verified: false, avatarUrl: av('GH', 160),
+        content: 'Found the bug. It was an actual moth — taped it into the logbook. cc @aiken #debugging',
+        images: [im(200)], date: 'Sep 9', link: '#' },
+      { name: 'Alan Turing', handle: 'aturing', verified: true, avatarUrl: av('AT', 20),
+        content: 'New notes on machine intelligence: https://example.com/imitation-game',
+        images: [im(250), im(300)], date: 'Jun 7', link: '#' },
+    ]
+    const post = createSocialPost(PRESETS[0])
+    document.getElementById('social-post-mount').appendChild(post.element)
+
+    let timer = null, i = 0
+    onCardHover(document.getElementById('card-social-post'),
+      () => {
+        if (timer !== null) return
+        timer = setInterval(() => {
+          i = (i + 1) % PRESETS.length
+          post.setState(PRESETS[i])
+        }, 2200)
+      },
+      () => {
+        clearInterval(timer)
+        timer = null
+        i = 0
+        post.setState(PRESETS[0])
       })
   }
 </script>

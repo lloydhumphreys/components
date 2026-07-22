@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>steps — demo</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fafafa; --fg: #1b1b1f; --mut: #6b6b76; --line: #e2e2e8;
+    --panel: #ffffff; --code-bg: #f1f1f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #131316; --fg: #e7e7ec; --mut: #9a9aa5; --line: #2c2c33;
+      --panel: #1b1b20; --code-bg: #232329;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #131316; --fg: #e7e7ec; --mut: #9a9aa5; --line: #2c2c33;
+    --panel: #1b1b20; --code-bg: #232329;
+  }
+  :root[data-theme="light"] { color-scheme: light; }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .page { max-width: 880px; margin: 0 auto; padding: 40px 24px 64px; }
+  .masthead h1 { margin: 0; font-size: 26px; letter-spacing: -0.02em; }
+  .masthead p { margin: 8px 0 0; color: var(--mut); max-width: 62ch; }
+  .masthead code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 6px; padding: 2px 7px; font-size: 13px;
+  }
+  .install { margin-top: 14px; font-size: 13px; color: var(--mut); }
+  .back { display: inline-block; margin-bottom: 18px; font-size: 13px; color: var(--mut); text-decoration: none; }
+  .back:hover { color: var(--fg); }
+
+  .controls {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 20px;
+    margin: 28px 0 4px; font-size: 13px;
+  }
+  .control { display: flex; align-items: center; gap: 8px; }
+  .control > span { color: var(--mut); }
+  .seg {
+    display: inline-flex; border: 1px solid var(--line);
+    border-radius: 8px; overflow: hidden; background: var(--panel);
+  }
+  .seg button {
+    appearance: none; border: 0; margin: 0; padding: 5px 12px;
+    background: transparent; color: var(--mut); font: inherit; font-size: 13px; cursor: pointer;
+  }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button[aria-pressed="true"] { background: var(--code-bg); color: var(--fg); font-weight: 600; }
+  .control input[type="range"] { accent-color: var(--fg); width: 150px; }
+  .control output { font-variant-numeric: tabular-nums; color: var(--mut); min-width: 5.5ch; }
+  .control output.tight { color: var(--fg); font-weight: 600; }
+
+  .stage {
+    margin: 26px 0 12px; border: 1px solid var(--line); border-radius: 14px;
+    background: var(--panel); padding: 32px; min-height: 300px;
+  }
+  .stage-title {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--mut); margin: 30px 0 -14px;
+  }
+  .log {
+    margin-top: 14px; font-size: 12.5px; color: var(--mut);
+    font-variant-numeric: tabular-nums; min-height: 1.5em; text-align: center;
+  }
+  .log b { color: var(--fg); font-weight: 600; }
+
+  /* The wizard duet: indicator + app-owned panel + app-owned buttons, one engine. */
+  .wizard { display: flex; flex-direction: column; gap: 22px; max-width: 100%; margin: 0 auto; transition: width 0.15s ease; }
+  .wizard.vertical { flex-direction: row; align-items: flex-start; gap: 30px; }
+  .wizard.vertical .wizard-side { flex: none; }
+  .wizard.vertical .wizard-main { flex: 1 1 0; min-width: 0; }
+  .wizard-main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .panel {
+    border: 1px solid var(--line); border-radius: 12px; background: var(--bg);
+    padding: 18px 20px; min-height: 130px;
+  }
+  .panel .k { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--mut); }
+  .panel .t { font-size: 17px; font-weight: 650; letter-spacing: -0.01em; margin-top: 3px; }
+  .panel .fields { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+  .panel .field { height: 30px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); position: relative; overflow: hidden; }
+  .panel .field::after {
+    content: ''; position: absolute; inset: 8px auto 8px 10px; width: 34%;
+    border-radius: 4px; background: var(--code-bg);
+  }
+  .panel .field.short::after { width: 18%; }
+  .panel.errored { border-color: color-mix(in srgb, #dc2626 55%, var(--line)); }
+  .panel .err { display: none; margin-top: 10px; font-size: 12.5px; color: light-dark(#dc2626, #f87171); }
+  .panel.errored .err { display: block; }
+  .wizard-nav { display: flex; justify-content: space-between; gap: 10px; }
+  .wizard-nav button {
+    appearance: none; border: 1px solid var(--line); border-radius: 9px; margin: 0;
+    padding: 7px 16px; background: var(--panel); color: var(--fg);
+    font: inherit; font-size: 13.5px; font-weight: 550; cursor: pointer;
+  }
+  .wizard-nav button:hover:not(:disabled) { background: var(--code-bg); }
+  .wizard-nav button:disabled { opacity: 0.45; cursor: default; }
+  .wizard-nav .continue { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  .wizard-nav .continue:hover:not(:disabled) { background: color-mix(in srgb, var(--fg) 88%, var(--bg)); }
+
+  .note { margin-top: 20px; font-size: 13px; color: var(--mut); max-width: 62ch; }
+  .note code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px;
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; }
+
+  /* ── API docs ── */
+  .docs { margin-top: 44px; border-top: 1px solid var(--line); padding-top: 28px; }
+  .docs h2 { font-size: 19px; letter-spacing: -0.015em; margin: 0 0 4px; }
+  .docs .lead { color: var(--mut); font-size: 14px; max-width: 68ch; margin: 0 0 8px; }
+  .docs h3 { font-size: 14px; margin: 30px 0 8px; }
+  .docs code {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px;
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 5px;
+  }
+  .docs pre {
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 14px; overflow-x: auto; font-size: 12.5px; line-height: 1.55;
+  }
+  .docs pre code { background: none; border: 0; padding: 0; font-size: inherit; }
+  .docs table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 8px 0 4px; }
+  .docs th {
+    text-align: left; font-weight: 600; font-size: 11.5px; color: var(--mut);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line);
+  }
+  .docs td {
+    vertical-align: top; padding: 7px 12px 7px 0; line-height: 1.5;
+    border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+  }
+  .docs td:first-child { white-space: nowrap; }
+  .docs td.t { color: var(--mut); font-size: 12px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  footer { margin-top: 22px; font-size: 13px; color: var(--mut); }
+  footer a { color: inherit; }
+</style>
+</head>
+<body>
+<div class="page">
+  <a class="back" href="../">← all demos</a>
+  <header class="masthead">
+    <h1>steps</h1>
+    <p>A 1-2-3-4 step indicator for wizards: numbered markers joined by connector lines,
+       per-step titles, and a description that reveals only on the step you're on. Forward
+       progress is earned — <code>next()</code> drives it, reached steps stay clickable to
+       jump back, and forward jumps beyond the furthest-reached step are blocked. It is
+       deliberately <em>only</em> the indicator: the panel and the Continue button below
+       are the app's, subscribed to the same engine. In a narrow container the horizontal
+       variant collapses to markers plus a centered title-and-description summary (the
+       markers already show your position, so there's no counter) — drag the width
+       slider.</p>
+    <p class="install">Install: <code>npx shadcn@latest add @lloydhumphreys/steps</code></p>
+  </header>
+
+  <div class="controls">
+    <div class="control">
+      <span>Orientation</span>
+      <div class="seg" id="seg-orientation">
+        <button type="button" data-value="horizontal" aria-pressed="true">Horizontal</button>
+        <button type="button" data-value="vertical">Vertical</button>
+      </div>
+    </div>
+    <div class="control">
+      <span>Size</span>
+      <div class="seg" id="seg-size">
+        <button type="button" data-value="sm">sm</button>
+        <button type="button" data-value="md" aria-pressed="true">md</button>
+        <button type="button" data-value="lg">lg</button>
+      </div>
+    </div>
+    <div class="control" id="width-control">
+      <span>Width</span>
+      <input type="range" id="width-range" min="260" max="760" value="760" step="10"
+             aria-label="Wizard container width in pixels">
+      <output id="width-out">760px</output>
+    </div>
+    <div class="control">
+      <span>Chaos</span>
+      <div class="seg" id="seg-chaos">
+        <button type="button" data-value="error">Error on this step</button>
+        <button type="button" data-value="disable3">Disable step 3</button>
+      </div>
+    </div>
+    <div class="control">
+      <span>Theme</span>
+      <div class="seg" id="seg-theme">
+        <button type="button" data-value="auto" aria-pressed="true">Auto</button>
+        <button type="button" data-value="light">Light</button>
+        <button type="button" data-value="dark">Dark</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="wizard" id="wizard">
+      <div class="wizard-side" id="mount-steps"></div>
+      <div class="wizard-main">
+        <div class="panel" id="panel"></div>
+        <div class="wizard-nav">
+          <button type="button" id="btn-back">← Back</button>
+          <button type="button" id="btn-continue" class="continue">Continue →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="log" id="log">One engine, three subscribers: the indicator, the panel, and the buttons.</div>
+
+  <p class="note">
+    The whole stage is one <code>createStepsEngine({ steps })</code>. The indicator is one
+    subscriber (<code>createSteps({ engine })</code>); the panel and the Back/Continue
+    buttons are two more, hand-rolled. Continue calls <code>engine.next()</code> — the only
+    call that grows the furthest-reached frontier — and the app disables it while the
+    active step is flagged with an error, which is exactly the gating pattern the engine
+    leaves to you on purpose. Step 4's Continue becomes Submit.
+  </p>
+  <p class="note">
+    Walk forward a few steps, then click step 1: everything you reached keeps its
+    checkmark (<code>furthest</code> never shrinks on back-nav), and the steps ahead stay
+    clickable up to the frontier. <b>Disable step 3</b> and Continue skips straight over
+    it — the marker gets a lock and refuses clicks. Drag <b>Width</b> under 560px: titles
+    hand over to the centered summary below the markers, driven by a CSS container query
+    on the indicator itself — no JS, no viewport breakpoint.
+  </p>
+
+  <section class="docs">
+    <h2>API</h2>
+    <p class="lead">
+      The vanilla core (<code>steps.ts</code>, zero dependencies). The React wrapper
+      (<code>steps-react.tsx</code>) exposes the same options as props plus a
+      <code>useSteps</code> hook; <code>steps-shadcn</code> is a separate registry item
+      with the whole thing rebuilt from Tailwind tokens and lucide icons — self-contained
+      in one file.
+    </p>
+
+    <pre><code>import { createStepsEngine, createSteps } from './steps'
+
+const engine = createStepsEngine({
+  steps: [
+    { id: 'account', title: 'Account',  description: 'Choose a username.' },
+    { id: 'payment', title: 'Payment',  description: 'Card details.' },
+    { id: 'team',    title: 'Team',     description: 'Invite teammates.' },
+    { id: 'review',  title: 'Review',   description: 'Check and submit.' },
+  ],
+  onChange(i, prev, reason) { analytics(reason) },
+})
+engine.subscribe(({ index, canNext, isLast }) => renderMyPanel(index))
+host.appendChild(createSteps({ engine }).element)
+
+myContinueButton.onclick = () => engine.next()   // the only way forward</code></pre>
+
+    <h3><code>createStepsEngine(options) → StepsEngine</code></h3>
+    <table>
+      <tr><th>Option</th><th>Type</th><th></th></tr>
+      <tr><td><code>steps</code></td><td class="t">StepItem[]</td>
+        <td>The steps: <code>{ id?, title, description?, icon?, disabled? }</code>.
+            <code>icon</code> is a <code>() =&gt; Node</code> factory replacing the number
+            (and the built-in status icons). <code>id</code> defaults to
+            <code>String(index)</code>.</td></tr>
+      <tr><td><code>index</code></td><td class="t">number = 0</td>
+        <td>Initial step — an uncontrolled starting point (clamped, nudged off disabled
+            steps); drive jumps through the engine.</td></tr>
+      <tr><td><code>initialFurthest</code></td><td class="t">number</td>
+        <td>Seed the frontier ahead of <code>index</code> when resuming a wizard whose
+            earlier steps are already complete.</td></tr>
+      <tr><td><code>onChange</code></td><td class="t">(index, prev, reason) → void</td>
+        <td>Index changed. <code>reason</code> is <code>'next'</code>, <code>'prev'</code>,
+            <code>'goto'</code> (marker click / clamp after a steps patch), or
+            <code>'reset'</code>.</td></tr>
+    </table>
+
+    <h3><code>StepsEngine</code></h3>
+    <table>
+      <tr><th>Member</th><th></th></tr>
+      <tr><td><code>getState()</code></td>
+        <td><code>{ index, id, count, furthest, steps, status, isFirst, isLast, canNext,
+            canPrev }</code> — <code>status</code> is one derived
+            <code>'upcoming' | 'active' | 'completed' | 'error' | 'disabled'</code> per
+            step.</td></tr>
+      <tr><td><code>subscribe(fn)</code></td>
+        <td>State-change notifications. Returns unsubscribe.</td></tr>
+      <tr><td><code>next()</code></td>
+        <td>Advance to the next non-disabled step (skipping over disabled ones). The only
+            call that grows <code>furthest</code>.</td></tr>
+      <tr><td><code>prev()</code></td>
+        <td>Back to the previous non-disabled step. Never touches
+            <code>furthest</code>.</td></tr>
+      <tr><td><code>goTo(target)</code></td>
+        <td>Jump to a reached step, by index or id — refused for disabled steps and
+            anything beyond <code>furthest</code>; a silent no-op on the active
+            step.</td></tr>
+      <tr><td><code>canGoTo(target)</code> / <code>indexOf(id)</code></td>
+        <td>Lookups.</td></tr>
+      <tr><td><code>setStepError(target, error)</code></td>
+        <td>Flag/clear an explicit error, independent of navigation. Error beats active in
+            <code>status</code>, so the step you're on turns red — gate your own Continue
+            on it.</td></tr>
+      <tr><td><code>reset()</code></td>
+        <td>Back to the initial index and frontier; clears every error flag.</td></tr>
+      <tr><td><code>setOptions({ steps })</code></td>
+        <td>Patch the steps live. Index and frontier clamp; if the active step became
+            disabled, the engine moves to the nearest enabled one.</td></tr>
+      <tr><td><code>destroy()</code></td><td>Drop subscribers.</td></tr>
+    </table>
+
+    <h3><code>createSteps(options) → Steps</code> — the indicator</h3>
+    <table>
+      <tr><th>Option</th><th>Type</th><th></th></tr>
+      <tr><td><code>engine</code></td><td class="t">StepsEngine</td>
+        <td>Share an engine you own; engine options on this object are then ignored.
+            Omitted: the indicator creates its own from the engine options above.</td></tr>
+      <tr><td><code>orientation</code></td><td class="t">'horizontal' | 'vertical'</td>
+        <td>Vertical runs the connector down past each step's text. Only horizontal
+            collapses in narrow containers.</td></tr>
+      <tr><td><code>size</code></td><td class="t">'sm' | 'md' | 'lg'</td>
+        <td>Geometry preset; every dimension is also a <code>--steps-*</code>
+            variable.</td></tr>
+      <tr><td><code>labels</code></td><td class="t">{ root?, step? }</td>
+        <td>Accessible names for the indicator and each step button.</td></tr>
+      <tr><td><code>injectStyles</code></td><td class="t">boolean = true</td>
+        <td>Auto-inject CSS; set false and ship <code>stepsStyles()</code> yourself.</td></tr>
+      <tr><td><code>className</code></td><td class="t">string</td>
+        <td>Extra class(es) on the root.</td></tr>
+    </table>
+    <p class="note" style="margin-top:8px">
+      Instance: <code>element</code>, <code>engine</code>, <code>getState()</code>,
+      <code>next()</code>/<code>prev()</code>/<code>goTo(target)</code>,
+      <code>setStepError()</code>, <code>reset()</code>, <code>setState(patch)</code>,
+      <code>destroy()</code>. Interactions: click a reached marker to jump back; Tab visits
+      reachable steps (unreached and disabled ones are natively
+      <code>disabled</code>, so they're skipped for free); arrows, Home and End move focus
+      between reachable steps.
+    </p>
+
+    <h3>Behavior notes</h3>
+    <p class="note" style="margin-top:8px">
+      The active <code>&lt;li&gt;</code> carries <code>aria-current="step"</code> — the
+      ARIA token that exists precisely for this — rather than tablist roles: the indicator
+      owns no panels, so there is no tab/tabpanel relationship to claim. No roving
+      tabindex either; these are ordinary buttons and the natural Tab order is correct.
+      The indicator never steals focus: programmatic <code>next()</code> from your own
+      Continue button re-renders it without touching focus. Completed markers derive from
+      <code>furthest</code>, so jumping back to review never un-completes anything. The
+      description reveal is a pure-CSS <code>grid-template-rows: 0fr → 1fr</code>
+      animation; under <code>prefers-reduced-motion</code> every transition here snaps
+      (nothing is informational-in-motion). Connector math is physical, not logical — RTL
+      isn't mirrored in this version.
+    </p>
+
+    <h3>Theming</h3>
+    <p class="note" style="margin-top:8px">
+      Consumes shadcn theme tokens when present (<code>--muted</code>,
+      <code>--muted-foreground</code>, <code>--primary</code>,
+      <code>--primary-foreground</code>, <code>--destructive</code>, <code>--border</code>,
+      <code>--foreground</code>, <code>--ring</code>) with zinc <code>light-dark()</code>
+      fallbacks — standalone it still reads correctly in both themes. Override
+      independently via <code>--steps-marker-bg/-fg</code>,
+      <code>--steps-marker-active-bg/-fg</code>, <code>--steps-marker-done-bg/-fg</code>,
+      <code>--steps-error/-fg</code>, <code>--steps-connector</code>,
+      <code>--steps-connector-fill</code>, <code>--steps-title</code>,
+      <code>--steps-title-active</code>, <code>--steps-description</code>,
+      <code>--steps-ring</code>, <code>--steps-radius</code>,
+      <code>--steps-marker-size</code>, <code>--steps-gap</code>,
+      <code>--steps-connector-size</code>. The 560px collapse breakpoint is a literal
+      (container query conditions can't read custom properties) — to change it, ship an
+      edited <code>stepsStyles()</code> with <code>injectStyles: false</code>.
+    </p>
+  </section>
+
+  <footer>
+    Built from <code>registry/steps/steps.ts</code> via
+    <code>npm run demo:build</code> ·
+    <a href="https://github.com/lloydhumphreys/components">github.com/lloydhumphreys/components</a>
+  </footer>
+</div>
+
+<!-- Bump ?v= whenever the bundle changes: GitHub Pages caches for 10 minutes. -->
+<script src="./steps.js?v=2"></script>
+<script>
+  const { createStepsEngine, createSteps } = Steps
+
+  const STEPS = [
+    { id: 'account', title: 'Account',         description: 'Choose a username and set a password.' },
+    { id: 'payment', title: 'Payment details', description: 'Enter your card information. Nothing is charged yet.' },
+    { id: 'team',    title: 'Team',            description: 'Invite up to five teammates — you can skip this.' },
+    { id: 'review',  title: 'Review & confirm', description: 'Double-check everything, then submit.' },
+  ]
+  const FIELDS = { account: 2, payment: 3, team: 1, review: 0 }
+
+  const engine = createStepsEngine({
+    steps: STEPS,
+    onChange(i, prev, reason) {
+      const R = { next: 'continued', prev: 'went back', goto: 'jumped', reset: 'reset' }
+      log.innerHTML = `${R[reason] ?? reason} · <b>${STEPS[prev].title}</b> → <b>${STEPS[i].title}</b>`
+    },
+  })
+
+  // Subscriber #1: the indicator.
+  const indicator = createSteps({ engine })
+  document.getElementById('mount-steps').appendChild(indicator.element)
+
+  // Subscribers #2 and #3: the app's panel and nav buttons — hand-rolled, same engine.
+  const wizard = document.getElementById('wizard')
+  const panel = document.getElementById('panel')
+  const log = document.getElementById('log')
+  const btnBack = document.getElementById('btn-back')
+  const btnContinue = document.getElementById('btn-continue')
+
+  function renderApp(s) {
+    const step = STEPS[s.index]
+    const errored = s.status[s.index] === 'error'
+    const n = FIELDS[step.id]
+    panel.classList.toggle('errored', errored)
+    panel.innerHTML = `<div class="k">Step ${s.index + 1} of ${s.count}</div>` +
+      `<div class="t">${step.title}</div>` +
+      (n ? `<div class="fields">${Array.from({ length: n }, (_, i) =>
+        `<div class="field${i === n - 1 ? ' short' : ''}"></div>`).join('')}</div>` : '') +
+      (step.id === 'review' ? `<div class="fields"><div class="field"></div><div class="field"></div><div class="field short"></div></div>` : '') +
+      `<div class="err">Something needs fixing here before you can continue.</div>`
+    btnBack.disabled = !s.canPrev
+    btnContinue.textContent = s.isLast ? 'Submit ✓' : 'Continue →'
+    // The gating the engine leaves to the app: no forward progress while errored.
+    btnContinue.disabled = errored
+    chaosButtons.error.setAttribute('aria-pressed', String(errored))
+  }
+  engine.subscribe(renderApp)
+
+  btnBack.addEventListener('click', () => engine.prev())
+  btnContinue.addEventListener('click', () => {
+    const s = engine.getState()
+    if (s.isLast) {
+      log.innerHTML = 'submitted · <b>all done</b> — resetting in a moment'
+      setTimeout(() => engine.reset(), 1400)
+    } else engine.next()
+  })
+
+  // ── Controls ──
+  function segment(id, onChange, { toggle = false } = {}) {
+    const seg = document.getElementById(id)
+    seg.addEventListener('click', (e) => {
+      const btn = e.target.closest('button')
+      if (!btn) return
+      if (!toggle) {
+        for (const b of seg.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b === btn))
+      }
+      onChange(btn.dataset.value, btn)
+    })
+    return Object.fromEntries([...seg.querySelectorAll('button')].map((b) => [b.dataset.value, b]))
+  }
+
+  segment('seg-orientation', (v) => {
+    indicator.setState({ orientation: v })
+    wizard.classList.toggle('vertical', v === 'vertical')
+    document.getElementById('width-control').style.display = v === 'vertical' ? 'none' : ''
+    applyWidth()
+  })
+  segment('seg-size', (v) => indicator.setState({ size: v }))
+
+  const chaosButtons = segment('seg-chaos', (v, btn) => {
+    if (v === 'error') {
+      const s = engine.getState()
+      engine.setStepError(s.index, s.status[s.index] !== 'error')
+    } else {
+      const disabled = btn.getAttribute('aria-pressed') !== 'true'
+      btn.setAttribute('aria-pressed', String(disabled))
+      engine.setOptions({ steps: STEPS.map((st) => st.id === 'team' ? { ...st, disabled } : st) })
+    }
+  }, { toggle: true })
+
+  segment('seg-theme', (v) => {
+    if (v === 'auto') delete document.documentElement.dataset.theme
+    else document.documentElement.dataset.theme = v
+  })
+
+  const range = document.getElementById('width-range')
+  const widthOut = document.getElementById('width-out')
+  function applyWidth() {
+    const horizontal = !wizard.classList.contains('vertical')
+    const w = Number(range.value)
+    wizard.style.width = horizontal ? w + 'px' : ''
+    widthOut.textContent = w + 'px'
+    widthOut.classList.toggle('tight', horizontal && w < 560)
+  }
+  range.addEventListener('input', applyWidth)
+  applyWidth()
+
+  renderApp(engine.getState())
+</script>
+</body>
+</html>

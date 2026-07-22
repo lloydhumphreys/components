@@ -1,0 +1,20 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "social-post-shadcn-demo",
+  "title": "Social Post (shadcn-native) Demo",
+  "author": "Lloyd Humphreys",
+  "description": "Canonical minimal demo for social-post-shadcn: the same sample card composed shadcn-natively.",
+  "dependencies": [],
+  "registryDependencies": [
+    "https://raw.githubusercontent.com/lloydhumphreys/components/main/public/r/social-post-shadcn.json"
+  ],
+  "files": [
+    {
+      "path": "registry/social-post/social-post-shadcn-demo.tsx",
+      "content": "'use client'\n\nimport { SocialPost } from './social-post-shadcn'\n\nfunction SocialPostShadcnDemo() {\n  return (\n    <SocialPost\n      className=\"max-w-md\"\n      name=\"Ada Lovelace\"\n      handle=\"adalovelace\"\n      verified\n      avatarUrl=\"https://i.pravatar.cc/96?u=adalovelace\"\n      content={\n        'Notes on the Analytical Engine are finally up — enormous thanks to @babbage and everyone following along with #computing. https://example.com/notes'\n      }\n      images={[\n        'https://picsum.photos/seed/engine-1/800/450',\n        'https://picsum.photos/seed/engine-2/800/450',\n      ]}\n      date=\"Mar 3, 2026\"\n      link=\"https://example.com/adalovelace/status/1\"\n    />\n  )\n}\n\nexport { SocialPostShadcnDemo }\n",
+      "type": "registry:component",
+      "target": "components/social-post/social-post-shadcn-demo.tsx"
+    }
+  ],
+  "type": "registry:component"
+}

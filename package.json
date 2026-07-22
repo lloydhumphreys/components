@@ -6,10 +6,13 @@
   "type": "module",
   "scripts": {
     "registry:build": "shadcn build",
-    "demo:build": "npm run demo:build:scroll-rail && npm run demo:build:workflow-button && npm run demo:build:slide-stepper",
+    "demo:build": "npm run demo:build:scroll-rail && npm run demo:build:workflow-button && npm run demo:build:slide-stepper && npm run demo:build:steps && npm run demo:build:social-post",
+    "verify:generated": "npm run registry:build && npm run demo:build && node scripts/verify-generated.mjs",
     "demo:build:scroll-rail": "esbuild registry/scroll-rail/scroll-rail.ts --bundle --format=iife --global-name=ScrollRail --outfile=public/demo/scroll-rail/scroll-rail.js",
     "demo:build:workflow-button": "esbuild registry/workflow-button/workflow-button.ts --bundle --format=iife --global-name=WorkflowButton --outfile=public/demo/workflow-button/workflow-button.js",
-    "demo:build:slide-stepper": "esbuild registry/slide-stepper/slide-stepper-carousel.ts --bundle --format=iife --global-name=SlideStepper --outfile=public/demo/slide-stepper/slide-stepper.js"
+    "demo:build:slide-stepper": "esbuild registry/slide-stepper/slide-stepper-carousel.ts --bundle --format=iife --global-name=SlideStepper --outfile=public/demo/slide-stepper/slide-stepper.js",
+    "demo:build:steps": "esbuild registry/steps/steps.ts --bundle --format=iife --global-name=Steps --outfile=public/demo/steps/steps.js",
+    "demo:build:social-post": "esbuild registry/social-post/social-post.ts --bundle --format=iife --global-name=SocialPost --outfile=public/demo/social-post/social-post.js"
   },
   "devDependencies": {
     "esbuild": "^0.25.0",

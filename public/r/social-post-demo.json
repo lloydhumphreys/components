@@ -1,0 +1,20 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "social-post-demo",
+  "title": "Social Post Demo",
+  "author": "Lloyd Humphreys",
+  "description": "Canonical minimal demo for social-post: one card with an avatar, a verified badge, mixed mention/hashtag/link content, a two-image grid, a date, and the 'View original' footer link, rendered via the React wrapper.",
+  "dependencies": [],
+  "registryDependencies": [
+    "https://raw.githubusercontent.com/lloydhumphreys/components/main/public/r/social-post.json"
+  ],
+  "files": [
+    {
+      "path": "registry/social-post/social-post-demo.tsx",
+      "content": "'use client'\n\nimport { SocialPost } from './social-post-react'\n\nfunction SocialPostDemo() {\n  return (\n    <div className=\"max-w-md\">\n      <SocialPost\n        name=\"Ada Lovelace\"\n        handle=\"adalovelace\"\n        verified\n        avatarUrl=\"https://i.pravatar.cc/96?u=adalovelace\"\n        content={\n          'Notes on the Analytical Engine are finally up — enormous thanks to @babbage and everyone following along with #computing. https://example.com/notes'\n        }\n        images={[\n          'https://picsum.photos/seed/engine-1/800/450',\n          'https://picsum.photos/seed/engine-2/800/450',\n        ]}\n        date=\"Mar 3, 2026\"\n        link=\"https://example.com/adalovelace/status/1\"\n      />\n    </div>\n  )\n}\n\nexport { SocialPostDemo }\n",
+      "type": "registry:component",
+      "target": "components/social-post/social-post-demo.tsx"
+    }
+  ],
+  "type": "registry:component"
+}

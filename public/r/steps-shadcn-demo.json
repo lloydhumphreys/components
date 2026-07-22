@@ -1,0 +1,21 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "steps-shadcn-demo",
+  "title": "Steps (shadcn-native) Demo",
+  "author": "Lloyd Humphreys",
+  "description": "Canonical minimal demo for steps-shadcn: the same wizard indicator composed shadcn-natively, advanced by the app's real shadcn Button.",
+  "dependencies": [],
+  "registryDependencies": [
+    "https://raw.githubusercontent.com/lloydhumphreys/components/main/public/r/steps-shadcn.json",
+    "button"
+  ],
+  "files": [
+    {
+      "path": "registry/steps/steps-shadcn-demo.tsx",
+      "content": "'use client'\n\nimport { Button } from '@/components/ui/button'\nimport { Steps, useSteps } from './steps-shadcn'\n\nconst STEPS = [{ title: 'Cart' }, { title: 'Shipping' }, { title: 'Payment' }, { title: 'Confirm' }]\n\nfunction StepsShadcnDemo() {\n  const wizard = useSteps({ steps: STEPS })\n\n  return (\n    <div className=\"flex flex-col gap-4\">\n      <Steps engine={wizard.engine} />\n      <Button className=\"self-start\" onClick={wizard.next} disabled={!wizard.canNext}>\n        {wizard.isLast ? 'Done' : 'Continue'}\n      </Button>\n    </div>\n  )\n}\n\nexport { StepsShadcnDemo }\n",
+      "type": "registry:component",
+      "target": "components/steps/steps-shadcn-demo.tsx"
+    }
+  ],
+  "type": "registry:component"
+}

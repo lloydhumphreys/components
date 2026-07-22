@@ -1,0 +1,20 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "steps-demo",
+  "title": "Steps Demo",
+  "author": "Lloyd Humphreys",
+  "description": "Canonical minimal demo for steps: a wizard step indicator driven by useSteps, with a Continue button gated on canNext.",
+  "dependencies": [],
+  "registryDependencies": [
+    "https://raw.githubusercontent.com/lloydhumphreys/components/main/public/r/steps.json"
+  ],
+  "files": [
+    {
+      "path": "registry/steps/steps-demo.tsx",
+      "content": "'use client'\n\nimport { Steps, useSteps } from './steps-react'\n\nconst STEPS = [{ title: 'Cart' }, { title: 'Shipping' }, { title: 'Payment' }, { title: 'Confirm' }]\n\nfunction StepsDemo() {\n  const wizard = useSteps({ steps: STEPS })\n\n  return (\n    <div className=\"flex flex-col gap-4\">\n      <Steps engine={wizard.engine} />\n      <button\n        type=\"button\"\n        onClick={wizard.next}\n        disabled={!wizard.canNext}\n        className=\"self-start rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground disabled:pointer-events-none disabled:opacity-50\"\n      >\n        {wizard.isLast ? 'Done' : 'Continue'}\n      </button>\n    </div>\n  )\n}\n\nexport { StepsDemo }\n",
+      "type": "registry:component",
+      "target": "components/steps/steps-demo.tsx"
+    }
+  ],
+  "type": "registry:component"
+}

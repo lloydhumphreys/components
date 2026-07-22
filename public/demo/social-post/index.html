@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>social-post — demo</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fafafa; --fg: #1b1b1f; --mut: #6b6b76; --line: #e2e2e8;
+    --panel: #ffffff; --code-bg: #f1f1f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #131316; --fg: #e7e7ec; --mut: #9a9aa5; --line: #2c2c33;
+      --panel: #1b1b20; --code-bg: #232329;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #131316; --fg: #e7e7ec; --mut: #9a9aa5; --line: #2c2c33;
+    --panel: #1b1b20; --code-bg: #232329;
+  }
+  :root[data-theme="light"] { color-scheme: light; }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .page { max-width: 880px; margin: 0 auto; padding: 40px 24px 64px; }
+  .masthead h1 { margin: 0; font-size: 26px; letter-spacing: -0.02em; }
+  .masthead p { margin: 8px 0 0; color: var(--mut); max-width: 62ch; }
+  .masthead code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 6px; padding: 2px 7px; font-size: 13px;
+  }
+  .install { margin-top: 14px; font-size: 13px; color: var(--mut); }
+  .back { display: inline-block; margin-bottom: 18px; font-size: 13px; color: var(--mut); text-decoration: none; }
+  .back:hover { color: var(--fg); }
+
+  .controls {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 20px;
+    margin: 28px 0 4px; font-size: 13px;
+  }
+  .control { display: flex; align-items: center; gap: 8px; }
+  .control > span { color: var(--mut); }
+  .seg {
+    display: inline-flex; border: 1px solid var(--line);
+    border-radius: 8px; overflow: hidden; background: var(--panel);
+  }
+  .seg button {
+    appearance: none; border: 0; margin: 0; padding: 5px 12px;
+    background: transparent; color: var(--mut); font: inherit; font-size: 13px; cursor: pointer;
+  }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button[aria-pressed="true"] { background: var(--code-bg); color: var(--fg); font-weight: 600; }
+
+  .stage {
+    margin: 26px 0 12px; border: 1px solid var(--line); border-radius: 14px;
+    background: var(--panel); padding: 32px; min-height: 300px;
+    display: grid; place-items: center;
+  }
+  /* Sized from outside on purpose — the card fills whatever width it's given. */
+  .embed { width: min(440px, 100%); }
+
+  .note { margin-top: 20px; font-size: 13px; color: var(--mut); max-width: 62ch; }
+  .note code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px;
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; }
+
+  /* ── API docs ── */
+  .docs { margin-top: 44px; border-top: 1px solid var(--line); padding-top: 28px; }
+  .docs h2 { font-size: 19px; letter-spacing: -0.015em; margin: 0 0 4px; }
+  .docs .lead { color: var(--mut); font-size: 14px; max-width: 68ch; margin: 0 0 8px; }
+  .docs h3 { font-size: 14px; margin: 30px 0 8px; }
+  .docs code {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px;
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 5px;
+  }
+  .docs pre {
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 14px; overflow-x: auto; font-size: 12.5px; line-height: 1.55;
+  }
+  .docs pre code { background: none; border: 0; padding: 0; font-size: inherit; }
+  .docs table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 8px 0 4px; }
+  .docs th {
+    text-align: left; font-weight: 600; font-size: 11.5px; color: var(--mut);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line);
+  }
+  .docs td {
+    vertical-align: top; padding: 7px 12px 7px 0; line-height: 1.5;
+    border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+  }
+  .docs td:first-child { white-space: nowrap; }
+  .docs td.t { color: var(--mut); font-size: 12px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  footer { margin-top: 22px; font-size: 13px; color: var(--mut); }
+  footer a { color: inherit; }
+</style>
+</head>
+<body>
+<div class="page">
+  <a class="back" href="../">← all demos</a>
+  <header class="masthead">
+    <h1>social-post</h1>
+    <p>A platform-neutral social post embed: quote a post from X, Bluesky, Mastodon,
+       LinkedIn, or anywhere else, and it renders as this one uniform, themeable card —
+       no brand chrome, no fetching, every field passed in as data. Mentions, hashtags,
+       and URLs in the content are tinted but deliberately inert; the <em>Source ↗</em>
+       link in the footer — under a full-bleed hairline — is the card's only interactive
+       element, so the quoted text stays selectable. Media (1–4 images) is cover-cropped
+       into one fixed 16:9 frame so cards keep identical proportions. Comes as an
+       outlined card or a filled gray one.</p>
+    <p class="install">Install: <code>npx shadcn@latest add @lloydhumphreys/social-post</code></p>
+  </header>
+
+  <div class="controls">
+    <div class="control">
+      <span>Images</span>
+      <div class="seg" id="seg-images">
+        <button type="button" data-value="0">0</button>
+        <button type="button" data-value="1">1</button>
+        <button type="button" data-value="2" aria-pressed="true">2</button>
+        <button type="button" data-value="3">3</button>
+        <button type="button" data-value="4">4</button>
+      </div>
+    </div>
+    <div class="control">
+      <span>Avatar</span>
+      <div class="seg" id="seg-avatar">
+        <button type="button" data-value="valid" aria-pressed="true">Valid</button>
+        <button type="button" data-value="broken">Broken URL</button>
+        <button type="button" data-value="none">None</button>
+      </div>
+    </div>
+    <div class="control">
+      <span>Verified</span>
+      <div class="seg" id="seg-verified">
+        <button type="button" data-value="on" aria-pressed="true">On</button>
+        <button type="button" data-value="off">Off</button>
+      </div>
+    </div>
+    <div class="control">
+      <span>Date</span>
+      <div class="seg" id="seg-date">
+        <button type="button" data-value="on" aria-pressed="true">On</button>
+        <button type="button" data-value="off">Off</button>
+      </div>
+    </div>
+    <div class="control">
+      <span>Variant</span>
+      <div class="seg" id="seg-variant">
+        <button type="button" data-value="outline" aria-pressed="true">Outline</button>
+        <button type="button" data-value="filled">Filled</button>
+      </div>
+    </div>
+    <div class="control">
+      <span>Content</span>
+      <div class="seg" id="seg-content">
+        <button type="button" data-value="long" aria-pressed="true">Long</button>
+        <button type="button" data-value="short">Short</button>
+      </div>
+    </div>
+    <div class="control">
+      <span>Theme</span>
+      <div class="seg" id="seg-theme">
+        <button type="button" data-value="auto" aria-pressed="true">Auto</button>
+        <button type="button" data-value="light">Light</button>
+        <button type="button" data-value="dark">Dark</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="embed" id="mount-social-post"></div>
+  </div>
+
+  <p class="note">
+    <b>Broken URL</b> points the avatar at a 404 — the neutral silhouette holds, because
+    the image is only revealed on a real <code>load</code> event (a dead URL never flashes
+    a broken-image glyph). The <b>Long</b> content ends its URL with a period: the period
+    stays plain text, outside the tinted span. Tab through the card — the footer link is
+    the only stop — and click-drag the text: nothing intercepts selection.
+  </p>
+
+  <section class="docs">
+    <h2>API</h2>
+    <p class="lead">
+      The vanilla core (<code>social-post.ts</code>, zero dependencies). The React wrapper
+      (<code>social-post-react.tsx</code>) exposes the same options as props;
+      <code>social-post-shadcn</code> is a separate registry item with the card rebuilt
+      from Tailwind tokens, your app's <code>&lt;Avatar&gt;</code>, and lucide icons —
+      self-contained in one file.
+    </p>
+
+    <pre><code>import { createSocialPost } from './social-post'
+
+const post = createSocialPost({
+  name: 'Ada Lovelace',
+  handle: 'adalovelace',          // '@' is prepended for you
+  verified: true,
+  content: 'Notes are up — thanks @babbage! https://example.com/notes #computing',
+  avatarUrl: 'https://…/ada.jpg', // optional; silhouette fallback if missing or dead
+  images: ['https://…/1.jpg', 'https://…/2.jpg'],   // 0–4, fixed 16:9 frame
+  date: 'Mar 3, 2026',            // optional, preformatted — never parsed
+  link: 'https://example.com/adalovelace/status/1',
+})
+host.appendChild(post.element)
+
+post.setState({ verified: false })   // patch any field live</code></pre>
+
+    <h3><code>createSocialPost(options) → SocialPost</code></h3>
+    <table>
+      <tr><th>Option</th><th>Type</th><th></th></tr>
+      <tr><td><code>name</code></td><td class="t">string</td>
+        <td>Display name.</td></tr>
+      <tr><td><code>handle</code></td><td class="t">string</td>
+        <td>Bare handle — the card prepends the <code>@</code> (a passed <code>@</code>
+            is forgiven and stripped).</td></tr>
+      <tr><td><code>content</code></td><td class="t">string</td>
+        <td>The post text. Line breaks preserved; always rendered as text, never markup.
+            Mentions, hashtags, and http(s) URLs are tinted as inert spans.</td></tr>
+      <tr><td><code>avatarUrl</code></td><td class="t">string?</td>
+        <td>Omitted — or dead (load error) — the neutral silhouette shows instead. The
+            image is only revealed once it actually loads.</td></tr>
+      <tr><td><code>images</code></td><td class="t">string[]?</td>
+        <td>0–4 image URLs. 1 fills the frame, 2 side by side, 3 one-tall-plus-two,
+            4 in a 2×2 — all cover-cropped inside one fixed 16:9 frame. More than 4 are
+            truncated with a <code>console.warn</code>.</td></tr>
+      <tr><td><code>link</code></td><td class="t">string</td>
+        <td>Href of the original post — the footer's "Source ↗", the card's only link
+            (opens in a new tab).</td></tr>
+      <tr><td><code>date</code></td><td class="t">string?</td>
+        <td>Preformatted display string ('4:20 PM · Mar 3, 2026', 'Mar 2026'…). Rendered
+            verbatim — never parsed, which is also why it's a plain span rather than a
+            <code>&lt;time datetime&gt;</code> with nothing honest to put in the
+            attribute.</td></tr>
+      <tr><td><code>verified</code></td><td class="t">boolean = false</td>
+        <td>Check badge after the name. Neutral-colored on purpose — the shape says
+            "verified", the color stays <code>--foreground</code> so it reads as no
+            platform's brand check.</td></tr>
+      <tr><td><code>variant</code></td><td class="t">'outline' | 'filled'</td>
+        <td>Default <code>'outline'</code> — a bordered card on the card surface.
+            <code>'filled'</code> keeps the same geometry on a borderless muted-gray
+            fill (the border goes transparent, not away, so nothing shifts by a pixel
+            when variants mix).</td></tr>
+      <tr><td><code>labels</code></td><td class="t">{ root?, source?, verified? }</td>
+        <td>Accessible name of the card, footer link text (default "Source"), badge
+            label.</td></tr>
+      <tr><td><code>injectStyles</code></td><td class="t">boolean = true</td>
+        <td>Auto-inject CSS; set false and ship <code>socialPostStyles()</code>
+            yourself.</td></tr>
+      <tr><td><code>className</code></td><td class="t">string</td>
+        <td>Extra class(es) on the root.</td></tr>
+    </table>
+    <p class="note" style="margin-top:8px">
+      Instance: <code>element</code>, <code>getState()</code>,
+      <code>setState(patch)</code>, <code>destroy()</code>. <code>setState</code> applies
+      the keys present in the patch (<code>key: undefined</code> clears an optional
+      field); the avatar <code>&lt;img&gt;</code> and the media grid are only rebuilt when
+      their values actually changed, so toggling <code>verified</code> never re-fetches
+      images. There's deliberately no engine/subscribe layer — the card has no navigation
+      or timing state, only display data.
+    </p>
+
+    <h3>Customizing</h3>
+    <p class="note" style="margin-top:8px">
+      Two layers: the <code>variant</code> prop picks the built-in look, and the
+      <code>--social-post-*</code> CSS variables override any single part — they win over
+      both variants, from the card itself or any ancestor.
+    </p>
+    <pre><code>// The built-in filled gray card — borderless, muted fill
+createSocialPost({ ...post, variant: 'filled' })   // vanilla
+&lt;SocialPost variant="filled" … /&gt;                  // react wrapper and shadcn-native
+
+/* Any custom background (or accent, radius, …) via the escape hatches.
+   Scope them to a wrapper — or set them globally — and every card follows: */
+.press-quotes {
+  --social-post-bg: #f4f4f5;        /* the fill (dark mode: use light-dark()) */
+  --social-post-accent: #0e7490;    /* mention/hashtag/URL tint */
+  --social-post-radius: 1rem;       /* corners */
+}
+
+/* shadcn-native only: className merges last, so call-site utilities work too */
+&lt;SocialPost className="border-transparent bg-muted" … /&gt;</code></pre>
+
+    <h3>Entities</h3>
+    <p class="note" style="margin-top:8px">
+      Detection is purely lexical, and honest about its limits: only explicit
+      <code>http(s)://</code> URLs (no bare domains or <code>www.</code>); mentions accept
+      the fediverse form <code>@user@instance.tld</code>; hashtags accept unicode
+      (<code>#café</code>, <code>#日本語</code>). Sentence punctuation trailing a URL is
+      trimmed — including an unbalanced closing paren, while
+      <code>wiki_(disambiguation)</code> keeps its own. Entities glued together without
+      whitespace (<code>@jane#tag</code>) stay merged. Everything renders via
+      <code>textContent</code> — content is never interpreted as HTML. The split function
+      is exported (<code>splitContentEntities</code>) if you want to render segments
+      yourself.
+    </p>
+
+    <h3>Theming</h3>
+    <p class="note" style="margin-top:8px">
+      Consumes shadcn theme tokens when present (<code>--card</code>,
+      <code>--card-foreground</code>, <code>--border</code>, <code>--foreground</code>,
+      <code>--muted</code>, <code>--muted-foreground</code>, <code>--primary</code>,
+      <code>--ring</code>, <code>--radius</code>) with zinc <code>light-dark()</code>
+      fallbacks — standalone it still reads correctly in both themes. Override
+      independently via <code>--social-post-bg/-fg</code>,
+      <code>--social-post-border</code>, <code>--social-post-radius</code>,
+      <code>--social-post-name</code>, <code>--social-post-handle</code>,
+      <code>--social-post-verified</code>, <code>--social-post-avatar-bg/-fg</code>,
+      <code>--social-post-accent</code> (the entity tint — defaults to
+      <code>--primary</code>, so it tracks your app's emphasis color; entities also carry
+      a slight weight bump so they still read in themes where primary sits near
+      foreground), <code>--social-post-media-radius</code>,
+      <code>--social-post-media-gap</code>, <code>--social-post-date</code>,
+      <code>--social-post-link/-hover</code>, <code>--social-post-ring</code>. The
+      filled variant swaps the default fill to <code>--muted</code> and turns the border
+      transparent — <code>--social-post-bg</code> overrides the fill for either variant.
+    </p>
+  </section>
+
+  <footer>
+    Built from <code>registry/social-post/social-post.ts</code> via
+    <code>npm run demo:build</code> ·
+    <a href="https://github.com/lloydhumphreys/components">github.com/lloydhumphreys/components</a>
+  </footer>
+</div>
+
+<!-- Bump ?v= whenever the bundle changes: GitHub Pages caches for 10 minutes. -->
+<script src="./social-post.js?v=3"></script>
+<script>
+  const { createSocialPost } = SocialPost
+
+  // Self-contained placeholder art (SVG data URIs) — the demo needs no network and the
+  // grid shapes stay legible: each image is numbered.
+  const ph = (n, h) => 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">` +
+    `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">` +
+    `<stop offset="0" stop-color="hsl(${h} 45% 60%)"/>` +
+    `<stop offset="1" stop-color="hsl(${h + 45} 50% 38%)"/></linearGradient></defs>` +
+    `<rect width="800" height="450" fill="url(#g)"/>` +
+    `<circle cx="655" cy="105" r="72" fill="rgba(255,255,255,0.22)"/>` +
+    `<text x="52" y="398" font-family="system-ui" font-size="64" font-weight="700" ` +
+    `fill="rgba(255,255,255,0.85)">${n}</text></svg>`)
+  const IMAGES = [ph(1, 215), ph(2, 150), ph(3, 25), ph(4, 285)]
+
+  const AVATAR = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">` +
+    `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">` +
+    `<stop offset="0" stop-color="hsl(250 55% 62%)"/>` +
+    `<stop offset="1" stop-color="hsl(300 45% 45%)"/></linearGradient></defs>` +
+    `<rect width="96" height="96" fill="url(#g)"/>` +
+    `<text x="48" y="61" text-anchor="middle" font-family="system-ui" font-size="36" ` +
+    `font-weight="700" fill="rgba(255,255,255,0.92)">AL</text></svg>`)
+
+  const CONTENT = {
+    long: 'Big day: the components registry is live! Huge thanks to @jane and ' +
+      '@sam@hachyderm.io for the reviews.\n\nWrite-up (with the gnarly bits): ' +
+      'https://example.com/registry-launch. More soon — follow #buildlog for updates.',
+    short: 'Shipped the new registry today — one command, zero config. Feels good.',
+  }
+
+  const post = createSocialPost({
+    name: 'Ada Lovelace',
+    handle: 'adalovelace',
+    verified: true,
+    avatarUrl: AVATAR,
+    content: CONTENT.long,
+    images: IMAGES.slice(0, 2),
+    date: '9:41 AM · Mar 3, 2026',
+    link: 'https://example.com/adalovelace/status/1',
+  })
+  document.getElementById('mount-social-post').appendChild(post.element)
+
+  // ── Controls ──
+  function segment(id, onChange) {
+    const seg = document.getElementById(id)
+    seg.addEventListener('click', (e) => {
+      const btn = e.target.closest('button')
+      if (!btn) return
+      for (const b of seg.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b === btn))
+      onChange(btn.dataset.value)
+    })
+  }
+
+  segment('seg-images', (v) => post.setState({ images: IMAGES.slice(0, Number(v)) }))
+  segment('seg-avatar', (v) => post.setState({
+    avatarUrl: v === 'valid' ? AVATAR : v === 'broken' ? './definitely-not-here-404.png' : undefined,
+  }))
+  segment('seg-verified', (v) => post.setState({ verified: v === 'on' }))
+  segment('seg-variant', (v) => post.setState({ variant: v }))
+  segment('seg-date', (v) => post.setState({ date: v === 'on' ? '9:41 AM · Mar 3, 2026' : undefined }))
+  segment('seg-content', (v) => post.setState({ content: CONTENT[v] }))
+  segment('seg-theme', (v) => {
+    if (v === 'auto') delete document.documentElement.dataset.theme
+    else document.documentElement.dataset.theme = v
+  })
+</script>
+</body>
+</html>

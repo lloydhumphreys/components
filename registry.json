@@ -7,7 +7,7 @@
       "name": "scroll-rail",
       "type": "registry:component",
       "title": "Scroll Rail",
-      "description": "A dependency-free scroll-position navigation rail: a compact column of ticks pinned to one edge of a scroll container, one per stop, with hover previews and click-to-scroll. Ships a framework-agnostic vanilla core plus a React wrapper.",
+      "description": "A dependency-free scroll-position navigation rail: a compact column of ticks pinned to one edge of a scroll container, one per stop, with hover previews and click-to-scroll. Ships a framework-agnostic vanilla core whose observer exposes getState() and subscribe(), plus a React wrapper.",
       "author": "Lloyd Humphreys",
       "dependencies": [],
       "registryDependencies": [],
@@ -28,7 +28,7 @@
       "name": "workflow-button",
       "type": "registry:component",
       "title": "Workflow Button",
-      "description": "A dependency-free split button that drives an entity through workflow stages: the primary button advances the happy path (re-labelling itself per stage), and an attached caret menu jumps anywhere the flow allows \u2014 hidden entirely when nothing is reachable. The flow is data: per-step `to` transition lists (to[0] = happy path, to: [] = terminal), an app `context` threaded into every resolver for role-aware disabling and prominence, per-step emphasis via `advanceVariant` (all shadcn Button variants, 'primary' aliased to 'default'), per-step icons/colors/attribution meta, and renderPrimary/renderItem slots. Styled on shadcn theme tokens with light-dark() fallbacks. Ships a framework-agnostic vanilla core plus a React wrapper.",
+      "description": "EXPERIMENTAL — the API is still settling and will change in breaking ways; pin what you install. A dependency-free split button that drives an entity through workflow stages: the primary button advances the happy path (re-labelling itself per stage), and an attached caret menu jumps anywhere the flow allows \u2014 hidden entirely when nothing is reachable. The flow is data: per-step `to` transition lists (to[0] = happy path, to: [] = terminal), an app `context` threaded into every resolver for role-aware disabling and prominence, per-step emphasis via `advanceVariant` (all shadcn Button variants, 'primary' aliased to 'default'), per-step icons/colors/attribution meta, and renderPrimary/renderItem slots. Styled on shadcn theme tokens with light-dark() fallbacks. Ships a framework-agnostic vanilla core plus a React wrapper.",
       "author": "Lloyd Humphreys",
       "dependencies": [],
       "registryDependencies": [],
@@ -49,7 +49,7 @@
       "name": "workflow-button-shadcn",
       "type": "registry:component",
       "title": "Workflow Button (shadcn-native)",
-      "description": "The workflow split button composed from your app's actual shadcn <Button> and <DropdownMenu> \u2014 identical variants, sizes, theming, focus rings, and dark mode; icons, menu rows, and custom primary content are plain ReactNode. Same flow model as workflow-button: `to` transition lists as the definition, `context` for role-aware disabling/prominence, per-step `advanceVariant` emphasis, attribution `meta`, and the caret hides when nothing is reachable. Self-contained in one file.",
+      "description": "EXPERIMENTAL — the API is still settling and will change in breaking ways; pin what you install. The workflow split button composed from your app's actual shadcn <Button> and <DropdownMenu> \u2014 identical variants, sizes, theming, focus rings, and dark mode; menu rows and custom primary content are plain ReactNode, and each step's icon is a component (icon?: ComponentType). Same flow model as workflow-button: `to` transition lists as the definition, `context` for role-aware disabling/prominence, per-step `advanceVariant` emphasis, attribution `meta`, and the caret hides when nothing is reachable. Self-contained in one file.",
       "author": "Lloyd Humphreys",
       "dependencies": [
         "lucide-react"
@@ -98,6 +98,45 @@
       ]
     },
     {
+      "name": "steps",
+      "type": "registry:component",
+      "title": "Steps",
+      "description": "EXPERIMENTAL — the API is still settling and will change in breaking ways; pin what you install. A dependency-free 1-2-3-4 step indicator for wizards and multi-step flows: numbered circular markers joined by connector lines, per-step titles, and a description revealed only on the active step. Navigation is earned — next() drives forward progress, reached steps stay clickable to jump back, forward jumps beyond the furthest-reached step are blocked, disabled steps are skipped. Ships a headless engine with subscribe() so the rest of the app renders its own panels off the same state, per-step icons, completed/error/disabled states, horizontal and vertical orientations, and a container-query collapse: in narrow containers the horizontal variant keeps its markers and swaps titles for a 'Step 2 of 4 — Payment' summary line. Styled on shadcn theme tokens with light-dark() fallbacks. Ships a framework-agnostic vanilla core plus a React wrapper with a useSteps hook.",
+      "author": "Lloyd Humphreys",
+      "dependencies": [],
+      "registryDependencies": [],
+      "files": [
+        {
+          "path": "registry/steps/steps.ts",
+          "type": "registry:lib",
+          "target": "components/steps/steps.ts"
+        },
+        {
+          "path": "registry/steps/steps-react.tsx",
+          "type": "registry:component",
+          "target": "components/steps/steps-react.tsx"
+        }
+      ]
+    },
+    {
+      "name": "steps-shadcn",
+      "type": "registry:component",
+      "title": "Steps (shadcn-native)",
+      "description": "EXPERIMENTAL — the API is still settling and will change in breaking ways; pin what you install. The wizard step indicator composed shadcn-natively: Tailwind theme tokens for every color, lucide icons for the completed/error/locked markers, cn, per-step icon components. Same model as steps — a headless useSteps hook the rest of the app subscribes to, earned forward progress with jump-back to reached steps, completed/error/disabled states, horizontal and vertical orientations, and a Tailwind v4 container-query collapse to a 'Step 2 of 4 — Payment' summary line in narrow containers. Self-contained in one file.",
+      "author": "Lloyd Humphreys",
+      "dependencies": [
+        "lucide-react"
+      ],
+      "registryDependencies": [],
+      "files": [
+        {
+          "path": "registry/steps/steps-shadcn.tsx",
+          "type": "registry:component",
+          "target": "components/steps/steps-shadcn.tsx"
+        }
+      ]
+    },
+    {
       "name": "slide-stepper-shadcn",
       "type": "registry:component",
       "title": "Slide Stepper (shadcn-native)",
@@ -114,6 +153,210 @@
           "path": "registry/slide-stepper/slide-stepper-shadcn.tsx",
           "type": "registry:component",
           "target": "components/slide-stepper/slide-stepper-shadcn.tsx"
+        }
+      ]
+    },
+    {
+      "name": "social-post",
+      "type": "registry:component",
+      "title": "Social Post",
+      "description": "EXPERIMENTAL — the API is still settling and will change in breaking ways; pin what you install. A themeable, platform-neutral social post embed card: no platform prop, no brand icons, so a quote grabbed from X, Bluesky, Mastodon, LinkedIn, or a blog renders uniformly. All data is passed as props — name, handle, content, an optional avatarUrl (a neutral person-silhouette fallback covers missing or dead avatars), 0–4 images in a Twitter-style grid (1 full-width, 2 columns, 3 tall + stacked, 4 in a 2×2, cover-cropped inside one fixed 16:9 frame), a required link to the original, an optional preformatted date string (never parsed), and an optional verified flag rendering a small neutral-colored check badge. @mentions, #hashtags, and URLs in the content are detected and tinted as inert spans — never anchors. The footer's 'Source ↗' link, under a full-bleed hairline, is the only interactive element; the card itself is not clickable and its text stays selectable. Two variants: 'outline' (bordered card) and 'filled' (borderless muted-gray fill), with --social-post-* CSS variables overriding any single part of either. Styled on shadcn theme tokens with light-dark() fallbacks. Ships a framework-agnostic vanilla core plus a React wrapper.",
+      "author": "Lloyd Humphreys",
+      "dependencies": [],
+      "registryDependencies": [],
+      "files": [
+        {
+          "path": "registry/social-post/social-post.ts",
+          "type": "registry:lib",
+          "target": "components/social-post/social-post.ts"
+        },
+        {
+          "path": "registry/social-post/social-post-react.tsx",
+          "type": "registry:component",
+          "target": "components/social-post/social-post-react.tsx"
+        }
+      ]
+    },
+    {
+      "name": "social-post-shadcn",
+      "type": "registry:component",
+      "title": "Social Post (shadcn-native)",
+      "description": "EXPERIMENTAL — the API is still settling and will change in breaking ways; pin what you install. The platform-neutral social post embed card composed shadcn-natively: your app's actual <Avatar>/<AvatarFallback> (installed as a registry dependency) for the avatar-with-fallback, Tailwind theme tokens for every color, lucide icons (BadgeCheckIcon for the neutral verified badge, ArrowUpRightIcon on the 'Source' link, UserRoundIcon as the avatar fallback), cn. Same data model, outline/filled variants, and entity tinting (inert @mention/#hashtag/URL spans, never anchors) as social-post — a compound SocialPost / SocialPostHeader / SocialPostContent / SocialPostMedia / SocialPostFooter composition, with SocialPost itself doubling as the data-driven entry point. Self-contained in one file (the entity detection is re-typed inline, not imported).",
+      "author": "Lloyd Humphreys",
+      "dependencies": [
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "avatar"
+      ],
+      "files": [
+        {
+          "path": "registry/social-post/social-post-shadcn.tsx",
+          "type": "registry:component",
+          "target": "components/social-post/social-post-shadcn.tsx"
+        }
+      ]
+    },
+    {
+      "name": "scroll-rail-demo",
+      "type": "registry:component",
+      "title": "Scroll Rail Demo",
+      "description": "Canonical minimal demo for scroll-rail: a scrollable four-section article with a ScrollRail pinned to its edge tracking the active section.",
+      "author": "Lloyd Humphreys",
+      "dependencies": [],
+      "registryDependencies": [
+        "https://raw.githubusercontent.com/lloydhumphreys/components/main/public/r/scroll-rail.json"
+      ],
+      "files": [
+        {
+          "path": "registry/scroll-rail/scroll-rail-demo.tsx",
+          "type": "registry:component",
+          "target": "components/scroll-rail/scroll-rail-demo.tsx"
+        }
+      ]
+    },
+    {
+      "name": "workflow-button-demo",
+      "type": "registry:component",
+      "title": "Workflow Button Demo",
+      "description": "Canonical minimal demo for workflow-button: a three-stage draft → review → published flow driven by the React wrapper, with the current stage in useState and onMove writing back.",
+      "author": "Lloyd Humphreys",
+      "dependencies": [],
+      "registryDependencies": [
+        "https://raw.githubusercontent.com/lloydhumphreys/components/main/public/r/workflow-button.json"
+      ],
+      "files": [
+        {
+          "path": "registry/workflow-button/workflow-button-demo.tsx",
+          "type": "registry:component",
+          "target": "components/workflow-button/workflow-button-demo.tsx"
+        }
+      ]
+    },
+    {
+      "name": "workflow-button-shadcn-demo",
+      "type": "registry:component",
+      "title": "Workflow Button (shadcn-native) Demo",
+      "description": "Canonical minimal demo for workflow-button-shadcn: the same three-stage draft → review → published flow composed from the app's real shadcn Button and DropdownMenu.",
+      "author": "Lloyd Humphreys",
+      "dependencies": [],
+      "registryDependencies": [
+        "https://raw.githubusercontent.com/lloydhumphreys/components/main/public/r/workflow-button-shadcn.json"
+      ],
+      "files": [
+        {
+          "path": "registry/workflow-button/workflow-button-shadcn-demo.tsx",
+          "type": "registry:component",
+          "target": "components/workflow-button/workflow-button-shadcn-demo.tsx"
+        }
+      ]
+    },
+    {
+      "name": "slide-stepper-demo",
+      "type": "registry:component",
+      "title": "Slide Stepper Demo",
+      "description": "Canonical minimal demo for slide-stepper: the zero-wiring SlideStepperCarousel from the React wrapper, three slides auto-advancing on a 4s timer.",
+      "author": "Lloyd Humphreys",
+      "dependencies": [],
+      "registryDependencies": [
+        "https://raw.githubusercontent.com/lloydhumphreys/components/main/public/r/slide-stepper.json"
+      ],
+      "files": [
+        {
+          "path": "registry/slide-stepper/slide-stepper-demo.tsx",
+          "type": "registry:component",
+          "target": "components/slide-stepper/slide-stepper-demo.tsx"
+        }
+      ]
+    },
+    {
+      "name": "slide-stepper-shadcn-demo",
+      "type": "registry:component",
+      "title": "Slide Stepper (shadcn-native) Demo",
+      "description": "Canonical minimal demo for slide-stepper-shadcn: the same three-slide auto-advancing carousel composed shadcn-natively.",
+      "author": "Lloyd Humphreys",
+      "dependencies": [],
+      "registryDependencies": [
+        "https://raw.githubusercontent.com/lloydhumphreys/components/main/public/r/slide-stepper-shadcn.json"
+      ],
+      "files": [
+        {
+          "path": "registry/slide-stepper/slide-stepper-shadcn-demo.tsx",
+          "type": "registry:component",
+          "target": "components/slide-stepper/slide-stepper-shadcn-demo.tsx"
+        }
+      ]
+    },
+    {
+      "name": "steps-demo",
+      "type": "registry:component",
+      "title": "Steps Demo",
+      "description": "Canonical minimal demo for steps: a wizard step indicator driven by useSteps, with a Continue button gated on canNext.",
+      "author": "Lloyd Humphreys",
+      "dependencies": [],
+      "registryDependencies": [
+        "https://raw.githubusercontent.com/lloydhumphreys/components/main/public/r/steps.json"
+      ],
+      "files": [
+        {
+          "path": "registry/steps/steps-demo.tsx",
+          "type": "registry:component",
+          "target": "components/steps/steps-demo.tsx"
+        }
+      ]
+    },
+    {
+      "name": "steps-shadcn-demo",
+      "type": "registry:component",
+      "title": "Steps (shadcn-native) Demo",
+      "description": "Canonical minimal demo for steps-shadcn: the same wizard indicator composed shadcn-natively, advanced by the app's real shadcn Button.",
+      "author": "Lloyd Humphreys",
+      "dependencies": [],
+      "registryDependencies": [
+        "https://raw.githubusercontent.com/lloydhumphreys/components/main/public/r/steps-shadcn.json",
+        "button"
+      ],
+      "files": [
+        {
+          "path": "registry/steps/steps-shadcn-demo.tsx",
+          "type": "registry:component",
+          "target": "components/steps/steps-shadcn-demo.tsx"
+        }
+      ]
+    },
+    {
+      "name": "social-post-demo",
+      "type": "registry:component",
+      "title": "Social Post Demo",
+      "description": "Canonical minimal demo for social-post: one card with an avatar, a verified badge, mixed mention/hashtag/link content, a two-image grid, a date, and the 'View original' footer link, rendered via the React wrapper.",
+      "author": "Lloyd Humphreys",
+      "dependencies": [],
+      "registryDependencies": [
+        "https://raw.githubusercontent.com/lloydhumphreys/components/main/public/r/social-post.json"
+      ],
+      "files": [
+        {
+          "path": "registry/social-post/social-post-demo.tsx",
+          "type": "registry:component",
+          "target": "components/social-post/social-post-demo.tsx"
+        }
+      ]
+    },
+    {
+      "name": "social-post-shadcn-demo",
+      "type": "registry:component",
+      "title": "Social Post (shadcn-native) Demo",
+      "description": "Canonical minimal demo for social-post-shadcn: the same sample card composed shadcn-natively.",
+      "author": "Lloyd Humphreys",
+      "dependencies": [],
+      "registryDependencies": [
+        "https://raw.githubusercontent.com/lloydhumphreys/components/main/public/r/social-post-shadcn.json"
+      ],
+      "files": [
+        {
+          "path": "registry/social-post/social-post-shadcn-demo.tsx",
+          "type": "registry:component",
+          "target": "components/social-post/social-post-shadcn-demo.tsx"
         }
       ]
     }

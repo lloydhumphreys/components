@@ -28,6 +28,14 @@
   }
   li b { font-size: 15px; }
   li p { margin: 4px 0 8px; font-size: 13.5px; }
+  .badge {
+    display: inline-block; vertical-align: 1px; margin-left: 6px;
+    font-size: 10.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+    color: light-dark(#92400e, #fbbf24);
+    background: light-dark(#fef3c7, #451a03);
+    border: 1px solid light-dark(#fcd34d, #92400e);
+    border-radius: 999px; padding: 1px 8px;
+  }
   a { color: #3b82f6; text-decoration: none; font-size: 13.5px; }
   a:hover { text-decoration: underline; }
   code {
@@ -55,16 +63,17 @@
       <code>npx shadcn@latest add https://lloydhumphreys.github.io/components/r/scroll-rail.json</code>
     </li>
     <li>
-      <b>workflow-button</b>
+      <b>workflow-button</b><span class="badge">Experimental</span>
       <p>A split button that drives an entity through workflow stages: the primary advances
          one step (re-labelling per stage), the caret menu jumps anywhere the flow allows.
-         Reachability is a predicate — DAG / one-way flows in a line.</p>
+         Reachability is a predicate — DAG / one-way flows in a line.
+         <em>Experimental — the API will change.</em></p>
       <a href="./demo/workflow-button/">Demo</a> ·
       <a href="./r/workflow-button.json">Registry JSON</a><br><br>
       <code>npx shadcn@latest add https://lloydhumphreys.github.io/components/r/workflow-button.json</code>
     </li>
     <li>
-      <b>workflow-button-shadcn</b>
+      <b>workflow-button-shadcn</b><span class="badge">Experimental</span>
       <p>The same workflow control composed from your app's actual shadcn
          <code>&lt;Button&gt;</code> + <code>&lt;DropdownMenu&gt;</code> — ReactNode icons and
          custom content, identical variants/theming. Pulls in <code>button</code> and
@@ -90,6 +99,47 @@
          automatically.</p>
       <a href="./r/slide-stepper-shadcn.json">Registry JSON</a><br><br>
       <code>npx shadcn@latest add https://lloydhumphreys.github.io/components/r/slide-stepper-shadcn.json</code>
+    </li>
+    <li>
+      <b>steps</b><span class="badge">Experimental</span>
+      <p>A 1-2-3-4 wizard step indicator: numbered markers with connector lines, per-step
+         titles, the active step's description revealed in place. Forward progress is
+         earned via <code>next()</code>, reached steps stay clickable to jump back, and a
+         narrow container collapses the horizontal variant to markers + a centered
+         title-and-description summary (pure container query). Headless engine + vanilla
+         indicator + React wrapper with a <code>useSteps</code> hook.
+         <em>Experimental — the API will change.</em></p>
+      <a href="./demo/steps/">Demo</a> ·
+      <a href="./r/steps.json">Registry JSON</a><br><br>
+      <code>npx shadcn@latest add https://lloydhumphreys.github.io/components/r/steps.json</code>
+    </li>
+    <li>
+      <b>steps-shadcn</b><span class="badge">Experimental</span>
+      <p>The same step indicator composed shadcn-natively — Tailwind theme tokens, lucide
+         status icons, <code>cn</code>, ReactNode per-step icons, Tailwind v4 container
+         queries for the collapse. Hook + indicator, self-contained in one file.</p>
+      <a href="./r/steps-shadcn.json">Registry JSON</a><br><br>
+      <code>npx shadcn@latest add https://lloydhumphreys.github.io/components/r/steps-shadcn.json</code>
+    </li>
+    <li>
+      <b>social-post</b><span class="badge">Experimental</span>
+      <p>A themeable, platform-neutral social post embed: quote a post from any network
+         and it renders as one uniform card — no brand chrome, all data passed as props.
+         @mentions/#hashtags/URLs tinted as inert spans, a 1–4 image grid in one fixed
+         16:9 frame, silhouette avatar fallback, outline and filled-gray variants, and a
+         single "Source" link under a full-bleed hairline. Vanilla core + React wrapper.
+         <em>Experimental — the API will change.</em></p>
+      <a href="./demo/social-post/">Demo</a> ·
+      <a href="./r/social-post.json">Registry JSON</a><br><br>
+      <code>npx shadcn@latest add https://lloydhumphreys.github.io/components/r/social-post.json</code>
+    </li>
+    <li>
+      <b>social-post-shadcn</b><span class="badge">Experimental</span>
+      <p>The same card composed shadcn-natively — your app's actual <code>&lt;Avatar&gt;</code>
+         (installed as a registry dep), Tailwind theme tokens, lucide icons; compound
+         <code>SocialPost</code> parts, self-contained in one file.</p>
+      <a href="./r/social-post-shadcn.json">Registry JSON</a><br><br>
+      <code>npx shadcn@latest add https://lloydhumphreys.github.io/components/r/social-post-shadcn.json</code>
     </li>
   </ul>
   <footer><a href="https://github.com/lloydhumphreys/components">github.com/lloydhumphreys/components</a></footer>
