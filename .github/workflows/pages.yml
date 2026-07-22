@@ -22,8 +22,14 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Verify committed registry and demo builds
+        run: npm run verify:generated
       - uses: actions/configure-pages@v5
-      # public/ is committed pre-built (registry:build + demo:build), so no build step here.
       - uses: actions/upload-pages-artifact@v3
         with:
           path: public
