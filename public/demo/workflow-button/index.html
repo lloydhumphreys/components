@@ -31,6 +31,21 @@
   .page { max-width: 880px; margin: 0 auto; padding: 40px 24px 64px; }
   .masthead h1 { margin: 0; font-size: 26px; letter-spacing: -0.02em; }
   .masthead p { margin: 8px 0 0; color: var(--muted); max-width: 62ch; }
+  .badge {
+    display: inline-block; vertical-align: 5px; margin-left: 8px;
+    font-size: 10.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+    color: light-dark(#92400e, #fbbf24);
+    background: light-dark(#fef3c7, #451a03);
+    border: 1px solid light-dark(#fcd34d, #92400e);
+    border-radius: 999px; padding: 2px 9px;
+  }
+  .experimental-note {
+    margin-top: 14px; font-size: 13px; max-width: 62ch;
+    color: light-dark(#92400e, #fbbf24);
+    background: light-dark(#fef3c7, #451a03);
+    border: 1px solid light-dark(#fcd34d, #92400e);
+    border-radius: 10px; padding: 10px 14px;
+  }
   .masthead code {
     background: var(--code-bg); border: 1px solid var(--border);
     border-radius: 6px; padding: 2px 7px; font-size: 13px;
@@ -126,12 +141,14 @@
 <div class="page">
   <a class="back" href="../">← all demos</a>
   <header class="masthead">
-    <h1>workflow-button</h1>
+    <h1>workflow-button<span class="badge">Experimental</span></h1>
     <p>A split button that drives an entity through workflow stages. The primary button
        advances one step — its label changes with the stage — and the caret menu lists every
        stage so you can jump anywhere the flow allows. Reachability is a predicate, so a
        one-way (DAG) flow that forbids going back is a single line.</p>
     <p class="install">Install: <code>npx shadcn@latest add @lloydhumphreys/workflow-button</code></p>
+    <p class="experimental-note">⚠️ This component is experimental — the API is still settling
+       and will change in breaking ways. Pin what you install and check the diff before updating.</p>
   </header>
 
   <div class="controls">
@@ -391,7 +408,7 @@ host.appendChild(wf.element)</code></pre>
 </div>
 
 <!-- Bump ?v= whenever the bundle changes: GitHub Pages caches for 10 minutes. -->
-<script src="./workflow-button.js?v=8"></script>
+<script src="./workflow-button.js?v=9"></script>
 <script>
   const { createWorkflowButton, forwardOnly, defaultCanMoveTo } = WorkflowButton
 

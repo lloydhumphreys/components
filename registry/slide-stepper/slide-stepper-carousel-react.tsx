@@ -1,3 +1,5 @@
+'use client'
+
 // slide-stepper-carousel-react — the zero-wiring React carousel.
 //
 // Not a mount of the vanilla createSlideStepperCarousel: that takes HTMLElement slides, and
@@ -19,7 +21,7 @@ import {
 } from './slide-stepper-carousel'
 import { SlideStepper, useSlideStepper } from './slide-stepper-react'
 
-export interface SlideStepperCarouselProps {
+interface SlideStepperCarouselProps {
   /** The slides: an array of nodes, or a factory for lazy content — the factory is rendered
    *  only for slides that have come within one step of being shown (then kept mounted, so an
    *  outgoing slide never blanks mid-crossfade). */
@@ -57,7 +59,7 @@ export interface SlideStepperCarouselProps {
 }
 
 /** The full carousel: viewport + pill sharing one engine, no wiring required. */
-export function SlideStepperCarousel({
+function SlideStepperCarousel({
   slides,
   count: countProp,
   duration,
@@ -85,6 +87,9 @@ export function SlideStepperCarousel({
 }: SlideStepperCarouselProps) {
   const lazy = typeof slides === 'function'
   const count = lazy ? Math.max(1, Math.floor(countProp ?? 1)) : slides.length
+  if (!lazy && count === 0) {
+    throw new Error('SlideStepperCarousel: `slides` must contain at least one slide')
+  }
   const stepper = useSlideStepper({ count, duration, durations, loop, startPaused, index: initialIndex, onChange, onComplete, onPauseChange })
   const { engine, index } = stepper
 
@@ -198,3 +203,5 @@ export function SlideStepperCarousel({
     </div>
   )
 }
+
+export { SlideStepperCarousel, type SlideStepperCarouselProps }

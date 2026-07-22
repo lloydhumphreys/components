@@ -27,10 +27,24 @@ var ScrollRail = (() => {
     observeActive: () => observeActive,
     railStyles: () => railStyles
   });
+  var DEFAULT_ACTIVATION_OFFSET = 96;
+  var DEFAULT_PREVIEW_CHARS = 150;
+  var DEFAULT_ACCENT_COLOR = "#3b82f6";
+  var DEFAULT_CARD_WIDTH = "234px";
   function observeActive(opts) {
-    const activationOffset = opts.activationOffset ?? 96;
+    const activationOffset = opts.activationOffset ?? DEFAULT_ACTIVATION_OFFSET;
     let items = opts.items;
     let activeId = null;
+    const subs = /* @__PURE__ */ new Set();
+    if (opts.onActiveChange) {
+      const onActiveChange = opts.onActiveChange;
+      subs.add((s) => onActiveChange(s.activeId));
+    }
+    const getState = () => ({ activeId });
+    const notify = () => {
+      const s = getState();
+      subs.forEach((fn) => fn(s));
+    };
     const compute = () => {
       if (!items.length) return null;
       const top = opts.scrollContainer.getBoundingClientRect().top;
@@ -44,7 +58,7 @@ var ScrollRail = (() => {
       const next = compute();
       if (next !== activeId) {
         activeId = next;
-        opts.onActiveChange(activeId);
+        notify();
       }
     };
     const onScroll = () => refresh();
@@ -58,9 +72,15 @@ var ScrollRail = (() => {
         refresh();
       },
       getActiveId: () => activeId,
+      getState,
+      subscribe(fn) {
+        subs.add(fn);
+        return () => subs.delete(fn);
+      },
       destroy() {
         opts.scrollContainer.removeEventListener("scroll", onScroll);
         if (raf && typeof cancelAnimationFrame !== "undefined") cancelAnimationFrame(raf);
+        subs.clear();
       }
     };
   }
@@ -238,7 +258,7 @@ var ScrollRail = (() => {
     return itemsFromHeadings(heads, opts);
   }
   function itemsFromHeadings(headings, opts = {}) {
-    const previewChars = opts.previewChars ?? 150;
+    const previewChars = opts.previewChars ?? DEFAULT_PREVIEW_CHARS;
     const assignIds = opts.assignIds ?? true;
     const used = /* @__PURE__ */ new Set();
     headings.forEach((h) => {
@@ -334,7 +354,7 @@ var ScrollRail = (() => {
    .is-hovered covers it and, unlike :hover, can't strand on scroll-under-cursor. */
 .scroll-rail-tick:focus-visible, .scroll-rail-tick.is-hovered { opacity: 1; outline: none; }
 /* A colored node keeps its own color when active; uncolored ones use the accent. */
-.scroll-rail-tick.is-active { width: 16px; opacity: 1; background: var(--tick, var(--rail-accent, #3b82f6)); }
+.scroll-rail-tick.is-active { width: 16px; opacity: 1; background: var(--tick, var(--rail-accent, ${DEFAULT_ACCENT_COLOR})); }
 /* \u2026and the engaged/active tick rises above the scaled-up baseline. Engaging a tick always
    puts .is-hover on the rail too, so these rules cover the keyboard-focus path as well.
    (Same specificity as the level rules above \u2014 order matters.) */
@@ -343,7 +363,7 @@ var ScrollRail = (() => {
 .scroll-rail.is-hover .scroll-rail-tick.is-active { width: 17px; }
 .scroll-rail-card {
   position: absolute; z-index: 10; box-sizing: border-box;
-  width: var(--rail-card-width, 234px); max-width: var(--rail-card-width, 234px);
+  width: var(--rail-card-width, ${DEFAULT_CARD_WIDTH}); max-width: var(--rail-card-width, ${DEFAULT_CARD_WIDTH});
   background: var(--rail-card-bg, Canvas); color: var(--rail-card-fg, CanvasText);
   border: 1px solid var(--rail-card-border, color-mix(in srgb, currentColor 20%, transparent));
   border-radius: 10px; padding: 9px 12px;

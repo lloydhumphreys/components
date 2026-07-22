@@ -1,0 +1,20 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "workflow-button-shadcn-demo",
+  "title": "Workflow Button (shadcn-native) Demo",
+  "author": "Lloyd Humphreys",
+  "description": "Canonical minimal demo for workflow-button-shadcn: the same three-stage draft → review → published flow composed from the app's real shadcn Button and DropdownMenu.",
+  "dependencies": [],
+  "registryDependencies": [
+    "https://raw.githubusercontent.com/lloydhumphreys/components/main/public/r/workflow-button-shadcn.json"
+  ],
+  "files": [
+    {
+      "path": "registry/workflow-button/workflow-button-shadcn-demo.tsx",
+      "content": "'use client'\n\nimport { useState } from 'react'\nimport { WorkflowButton, type WorkflowStep } from './workflow-button-shadcn'\n\nconst STEPS: WorkflowStep[] = [\n  { id: 'draft', label: 'Draft' },\n  { id: 'review', label: 'In review', advanceLabel: 'Submit for review' },\n  { id: 'published', label: 'Published', advanceLabel: 'Publish' },\n]\n\nfunction WorkflowButtonShadcnDemo() {\n  const [current, setCurrent] = useState('draft')\n\n  return (\n    <WorkflowButton\n      steps={STEPS}\n      current={current}\n      onMove={(toId) => setCurrent(toId)}\n    />\n  )\n}\n\nexport { WorkflowButtonShadcnDemo }\n",
+      "type": "registry:component",
+      "target": "components/workflow-button/workflow-button-shadcn-demo.tsx"
+    }
+  ],
+  "type": "registry:component"
+}

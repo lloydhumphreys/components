@@ -62,6 +62,7 @@ export function createSlideStepperCarousel(opts: SlideStepperCarouselOptions): S
   const lazy = typeof opts.slides === 'function'
   const count = lazy ? Math.max(1, Math.floor(opts.count ?? 0)) : (opts.slides as HTMLElement[]).length
   if (lazy && !opts.count) throw new Error('slide-stepper-carousel: `count` is required when `slides` is a function')
+  if (!lazy && count === 0) throw new Error('slide-stepper-carousel: `slides` must contain at least one slide')
   if (opts.injectStyles !== false) injectCarouselStyles()
 
   const engine = createStepperEngine({

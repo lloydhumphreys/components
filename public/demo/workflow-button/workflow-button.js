@@ -492,7 +492,7 @@ var WorkflowButton = (() => {
   min-width: max(100%, 220px); max-height: 320px; overflow-y: auto;
   padding: 4px; box-sizing: border-box;
   background: var(--_popover); color: var(--_popover-fg);
-  border: 1px solid var(--border, light-dark(#e4e4e7, #27272a));
+  border: 1px solid var(--_border);
   border-radius: var(--_radius-md);
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }

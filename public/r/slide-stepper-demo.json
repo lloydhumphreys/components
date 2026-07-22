@@ -1,0 +1,20 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "slide-stepper-demo",
+  "title": "Slide Stepper Demo",
+  "author": "Lloyd Humphreys",
+  "description": "Canonical minimal demo for slide-stepper: the zero-wiring SlideStepperCarousel from the React wrapper, three slides auto-advancing on a 4s timer.",
+  "dependencies": [],
+  "registryDependencies": [
+    "https://raw.githubusercontent.com/lloydhumphreys/components/main/public/r/slide-stepper.json"
+  ],
+  "files": [
+    {
+      "path": "registry/slide-stepper/slide-stepper-demo.tsx",
+      "content": "'use client'\n\nimport { SlideStepperCarousel } from './slide-stepper-carousel-react'\n\nconst SLIDES = ['First slide.', 'Second slide.', 'Third slide.']\n\nfunction SlideStepperDemo() {\n  return (\n    <SlideStepperCarousel\n      slides={SLIDES.map((text) => (\n        <div key={text} className=\"grid h-40 place-items-center text-lg\">\n          {text}\n        </div>\n      ))}\n      duration={4000}\n    />\n  )\n}\n\nexport { SlideStepperDemo }\n",
+      "type": "registry:component",
+      "target": "components/slide-stepper/slide-stepper-demo.tsx"
+    }
+  ],
+  "type": "registry:component"
+}

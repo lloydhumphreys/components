@@ -23,6 +23,10 @@
 // (<SlideStepper> + useSlideStepper) lives in slide-stepper-react.tsx; a shadcn-native
 // rebuild lives in slide-stepper-shadcn.tsx.
 //
+// State ownership: the engine, not the caller, owns `index` — it's an uncontrolled starting
+// point, and jumps go through the engine's goTo/next/prev. Timing/progress is ephemeral UI
+// state driven by a live timer; a controlled index would fight that timer on every render.
+//
 // ── Theming ────────────────────────────────────────────────────────────────────────────
 // Styles consume shadcn theme tokens when present, with light-dark() fallbacks so the
 // control reads correctly standalone in both themes. Override independently of the app
@@ -93,8 +97,11 @@ export interface StepperEngine {
   getState(): StepperEngineState
   /** The effective duration for a slide (per-slide override or the default). */
   durationFor(index: number): number
-  /** Subscribe to state changes; returns unsubscribe. Fires on index/pause/done changes —
-   *  not continuously during a slide (progress is computed, not ticked). */
+  /** Start auto-advance. Idempotent; safe to call from every mounted consumer. */
+  start(): void
+  /** Subscribe to state changes; returns unsubscribe. Subscription is side-effect-free and
+   *  does not start the clock. Fires on index/pause/done changes — not continuously during
+   *  a slide (progress is computed, not ticked). */
   subscribe(fn: (state: StepperEngineState) => void): () => void
   /** Advance one slide (wraps only when looping; no-op past the end otherwise). */
   next(): void
@@ -129,10 +136,8 @@ const clampIndex = (i: number, count: number) => Math.min(Math.max(Math.floor(i)
  * so progress freezes and continues at the exact same fraction.
  *
  * Construction is deliberately side-effect-free (the React hooks build engines inside a
- * useState initializer, where a live timer would leak under StrictMode); the clock starts
- * on the first subscribe — every real consumer subscribes, so an engine just works. Driving
- * one purely through callbacks with no subscriber is the one case that still needs an
- * explicit `setOptions({})` (or any goTo/resume) to start it.
+ * useState initializer, where a live timer would leak under StrictMode). Call `start()` once
+ * the consumer is mounted; it is idempotent, so composed consumers can all call it safely.
  */
 export function createStepperEngine(opts: StepperEngineOptions): StepperEngine {
   let count = Math.max(1, Math.floor(opts.count))
@@ -145,6 +150,7 @@ export function createStepperEngine(opts: StepperEngineOptions): StepperEngine {
   let elapsed = 0
   /** performance.now() when the current run segment started; null while not running. */
   let runStart: number | null = null
+  let started = false
   let timer: ReturnType<typeof setTimeout> | undefined
   const reasons = new Set<PauseReason>()
   if (opts.startPaused) reasons.add('user')
@@ -188,7 +194,7 @@ export function createStepperEngine(opts: StepperEngineOptions): StepperEngine {
    *  pause and the deck isn't done. */
   const armTimer = () => {
     clearTimer()
-    if (reasons.size > 0 || done) {
+    if (!started || reasons.size > 0 || done) {
       runStart = null
       return
     }
@@ -224,7 +230,7 @@ export function createStepperEngine(opts: StepperEngineOptions): StepperEngine {
 
   const pause = (reason: PauseReason = 'user') => {
     if (reasons.has(reason)) return
-    const wasRunning = reasons.size === 0 && !done
+    const wasRunning = started && reasons.size === 0 && !done
     // Fold the in-flight segment into elapsed exactly once — later reasons stack for free.
     if (wasRunning && runStart != null) {
       elapsed += now() - runStart
@@ -240,7 +246,7 @@ export function createStepperEngine(opts: StepperEngineOptions): StepperEngine {
     if (!reasons.delete(reason)) return
     if (reasons.size === 0) {
       armTimer()
-      opts.onPauseChange?.(false, [])
+      if (started) opts.onPauseChange?.(false, [])
     }
     notify()
   }
@@ -248,12 +254,13 @@ export function createStepperEngine(opts: StepperEngineOptions): StepperEngine {
   return {
     getState,
     durationFor,
+    start() {
+      if (started) return
+      started = true
+      armTimer()
+    },
     subscribe(fn) {
       subs.add(fn)
-      // The first observer starts a never-started clock. runStart is non-null whenever a
-      // run segment is in flight (so this can't clobber one), and armTimer itself no-ops
-      // under pause/done.
-      if (runStart == null) armTimer()
       return () => subs.delete(fn)
     },
     next() {
@@ -309,6 +316,7 @@ export function createStepperEngine(opts: StepperEngineOptions): StepperEngine {
     destroy() {
       clearTimer()
       runStart = null
+      started = false
       subs.clear()
     },
   }
@@ -761,6 +769,7 @@ export function createSlideStepper(opts: SlideStepperOptions): SlideStepper {
   buildDots()
   render(engine.getState())
   const unsubscribe = engine.subscribe(render)
+  engine.start()
 
   return {
     element: root,

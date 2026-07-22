@@ -256,7 +256,8 @@ host.appendChild(carousel.element)
 // …or decoupled: one engine, your own content
 import { createStepperEngine, createSlideStepper } from './slide-stepper'
 const engine = createStepperEngine({ count: 8, duration: 4000 })
-engine.subscribe(({ index }) => showMySlide(index))   // first subscribe starts the clock
+engine.subscribe(({ index }) => showMySlide(index))
+engine.start()                                       // explicit; safe to call more than once
 host.appendChild(createSlideStepper({ engine, clip: 5 }).element)</code></pre>
 
     <h3><code>createStepperEngine(options) → StepperEngine</code></h3>
@@ -294,6 +295,9 @@ host.appendChild(createSlideStepper({ engine, clip: 5 }).element)</code></pre>
         <td><code>{ index, count, progress, paused, pauseReasons, done }</code> —
             <code>progress</code> is computed from <code>performance.now()</code> on
             demand; the engine never ticks.</td></tr>
+      <tr><td><code>start()</code></td>
+        <td>Start auto-advance. Idempotent, so every mounted consumer may call it safely;
+            subscribing alone does not start the clock.</td></tr>
       <tr><td><code>subscribe(fn)</code></td>
         <td>State-change notifications (index/pause/done — not continuous). Returns
             unsubscribe.</td></tr>
@@ -396,9 +400,9 @@ host.appendChild(createSlideStepper({ engine, clip: 5 }).element)</code></pre>
       The JS timer is the authoritative clock; CSS only displays progress and is never
       listened to — so pause freezes the bar at its exact fraction and resume continues
       from it, and aggressive <code>prefers-reduced-motion</code> resets can't skew timing.
-      Engines are side-effect-free at construction and start on their first
-      <code>subscribe()</code> (a purely callback-driven engine with no subscriber starts
-      on its first <code>setOptions({})</code> / <code>goTo()</code>).
+      Engines are side-effect-free at construction and start explicitly with
+      <code>start()</code>. Pills and React hooks call it when they mount; it is idempotent,
+      so composed consumers can all call it without resetting progress.
       Under reduced motion the strip glide, bar stretch and crossfade all snap; the fill
       sweep is kept deliberately — it <em>is</em> the progress information. The strip does
       not mirror under RTL on purpose: it's elapsed time, not reading order, matching
@@ -431,7 +435,7 @@ host.appendChild(createSlideStepper({ engine, clip: 5 }).element)</code></pre>
 </div>
 
 <!-- Bump ?v= whenever the bundle changes: GitHub Pages caches for 10 minutes. -->
-<script src="./slide-stepper.js?v=5"></script>
+<script src="./slide-stepper.js?v=6"></script>
 <script>
   const { createSlideStepperCarousel, createStepperEngine, createSlideStepper } = SlideStepper
 
@@ -498,8 +502,8 @@ host.appendChild(createSlideStepper({ engine, clip: 5 }).element)</code></pre>
     { who: 'The timer',    quote: 'setTimeout is the clock. CSS just makes it look effortless.' },
   ]
   const duetCard = document.getElementById('duet-card')
-  // The pill owns the engine; the card is simply a second subscriber to it. (A bare
-  // createStepperEngine() works too — its clock starts on the first subscribe.)
+  // The pill owns the engine and starts it; the card is simply a second subscriber.
+  // With a bare createStepperEngine(), call engine.start() after wiring subscribers.
   const duetPill = createSlideStepper({ count: QUOTES.length, duration: 3500 })
   const duetEngine = duetPill.engine
   duetEngine.subscribe(renderDuet)

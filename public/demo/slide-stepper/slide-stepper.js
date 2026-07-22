@@ -42,6 +42,7 @@ var SlideStepper = (() => {
     let done = false;
     let elapsed = 0;
     let runStart = null;
+    let started = false;
     let timer;
     const reasons = /* @__PURE__ */ new Set();
     if (opts.startPaused) reasons.add("user");
@@ -76,7 +77,7 @@ var SlideStepper = (() => {
     };
     const armTimer = () => {
       clearTimer();
-      if (reasons.size > 0 || done) {
+      if (!started || reasons.size > 0 || done) {
         runStart = null;
         return;
       }
@@ -107,7 +108,7 @@ var SlideStepper = (() => {
     };
     const pause = (reason = "user") => {
       if (reasons.has(reason)) return;
-      const wasRunning = reasons.size === 0 && !done;
+      const wasRunning = started && reasons.size === 0 && !done;
       if (wasRunning && runStart != null) {
         elapsed += now() - runStart;
         runStart = null;
@@ -121,16 +122,20 @@ var SlideStepper = (() => {
       if (!reasons.delete(reason)) return;
       if (reasons.size === 0) {
         armTimer();
-        opts.onPauseChange?.(false, []);
+        if (started) opts.onPauseChange?.(false, []);
       }
       notify();
     };
     return {
       getState,
       durationFor,
+      start() {
+        if (started) return;
+        started = true;
+        armTimer();
+      },
       subscribe(fn) {
         subs.add(fn);
-        if (runStart == null) armTimer();
         return () => subs.delete(fn);
       },
       next() {
@@ -182,6 +187,7 @@ var SlideStepper = (() => {
       destroy() {
         clearTimer();
         runStart = null;
+        started = false;
         subs.clear();
       }
     };
@@ -468,6 +474,7 @@ var SlideStepper = (() => {
     buildDots();
     render(engine.getState());
     const unsubscribe = engine.subscribe(render);
+    engine.start();
     return {
       element: root,
       engine,
@@ -658,6 +665,7 @@ var SlideStepper = (() => {
     const lazy = typeof opts.slides === "function";
     const count = lazy ? Math.max(1, Math.floor(opts.count ?? 0)) : opts.slides.length;
     if (lazy && !opts.count) throw new Error("slide-stepper-carousel: `count` is required when `slides` is a function");
+    if (!lazy && count === 0) throw new Error("slide-stepper-carousel: `slides` must contain at least one slide");
     if (opts.injectStyles !== false) injectCarouselStyles();
     const engine = createStepperEngine({
       count,

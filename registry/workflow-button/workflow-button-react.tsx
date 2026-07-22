@@ -1,17 +1,29 @@
 // workflow-button-react — a thin React wrapper over the framework-agnostic core.
 //
+// EXPERIMENTAL: the API is still settling and will change in breaking ways.
+//
 //   <WorkflowButton steps={steps} current={id} onMove={...} />   renders the split button
 //   useWorkflow({ steps, current, ... })                          headless: the flow math
 //
 // The component is controlled: you own `current`, handle `onMove`, and pass the new id back
 // as a prop. Internally it runs the vanilla core with `manageState: false` and syncs on
 // prop changes — so the DOM view and your React state never fight over who's current.
+//
+// State ownership: always controlled, on purpose — a workflow stage is host-app domain
+// data (it lives in your database, not in a widget), so `current` + `onMove` is the whole
+// contract. The vanilla core's `manageState` still exists for zero-framework, self-managed
+// usage; this wrapper just never turns it on.
+
+'use client'
 
 import { useEffect, useMemo, useRef } from 'react'
 import {
   createWorkflowButton,
   defaultCanMoveTo,
   defaultNext,
+  forwardOnly,
+  nextInOrder,
+  normalizeVariant,
   type MovePredicate,
   type NextResolver,
   type WorkflowButton as VanillaWorkflowButton,
@@ -19,21 +31,7 @@ import {
   type WorkflowVariant,
 } from './workflow-button'
 
-export type {
-  WorkflowStep,
-  WorkflowVariant,
-  NextResolver,
-  MovePredicate,
-} from './workflow-button'
-export {
-  defaultCanMoveTo,
-  defaultNext,
-  forwardOnly,
-  nextInOrder,
-  normalizeVariant,
-} from './workflow-button'
-
-export interface WorkflowButtonProps<TCtx = unknown> {
+interface WorkflowButtonProps<TCtx = unknown> {
   steps: WorkflowStep[]
   /** Id of the current stage (controlled). */
   current: string
@@ -83,7 +81,7 @@ export interface WorkflowButtonProps<TCtx = unknown> {
  * The wrapper host is `display: contents`, so it adds no layout box; the button (an inline
  * group) lays out as if it were your own child.
  */
-export function WorkflowButton<TCtx = unknown>({
+function WorkflowButton<TCtx = unknown>({
   steps,
   current,
   onMove,
@@ -93,8 +91,8 @@ export function WorkflowButton<TCtx = unknown>({
   advanceLabelFor,
   renderPrimary,
   renderItem,
-  size,
-  variant,
+  size = 'default',
+  variant = 'default',
   variantFor,
   menuLabel,
   className,
@@ -162,7 +160,7 @@ export function WorkflowButton<TCtx = unknown>({
   return <span ref={hostRef} style={{ display: 'contents' }} />
 }
 
-export interface UseWorkflowOptions<TCtx = unknown> {
+interface UseWorkflowOptions<TCtx = unknown> {
   steps: WorkflowStep[]
   current: string
   context?: TCtx
@@ -170,7 +168,7 @@ export interface UseWorkflowOptions<TCtx = unknown> {
   canMoveTo?: MovePredicate<TCtx>
 }
 
-export interface WorkflowState {
+interface WorkflowState {
   /** The current step object. */
   currentStep: WorkflowStep | undefined
   /** The id the primary would advance to, or null if terminal/blocked. */
@@ -187,7 +185,7 @@ export interface WorkflowState {
  * Headless flow math — the same resolution the button uses, without any DOM. Build your own
  * control (a stepper, a command palette entry, a keyboard shortcut) on top.
  */
-export function useWorkflow<TCtx = unknown>({
+function useWorkflow<TCtx = unknown>({
   steps,
   current,
   context,
@@ -219,4 +217,21 @@ export function useWorkflow<TCtx = unknown>({
         !!cur && steps.some((s) => s.id !== current && reachable(s, cur, steps, context)),
     }
   }, [steps, current, context, next, canMoveTo])
+}
+
+export {
+  defaultCanMoveTo,
+  defaultNext,
+  forwardOnly,
+  nextInOrder,
+  normalizeVariant,
+  useWorkflow,
+  WorkflowButton,
+  type MovePredicate,
+  type NextResolver,
+  type UseWorkflowOptions,
+  type WorkflowButtonProps,
+  type WorkflowState,
+  type WorkflowStep,
+  type WorkflowVariant,
 }

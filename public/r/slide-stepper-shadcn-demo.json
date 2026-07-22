@@ -1,0 +1,20 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "slide-stepper-shadcn-demo",
+  "title": "Slide Stepper (shadcn-native) Demo",
+  "author": "Lloyd Humphreys",
+  "description": "Canonical minimal demo for slide-stepper-shadcn: the same three-slide auto-advancing carousel composed shadcn-natively.",
+  "dependencies": [],
+  "registryDependencies": [
+    "https://raw.githubusercontent.com/lloydhumphreys/components/main/public/r/slide-stepper-shadcn.json"
+  ],
+  "files": [
+    {
+      "path": "registry/slide-stepper/slide-stepper-shadcn-demo.tsx",
+      "content": "'use client'\n\nimport { SlideStepperCarousel } from './slide-stepper-shadcn'\n\nconst SLIDES = ['First slide.', 'Second slide.', 'Third slide.']\n\nfunction SlideStepperShadcnDemo() {\n  return (\n    <SlideStepperCarousel\n      slides={SLIDES.map((text) => (\n        <div key={text} className=\"grid h-40 place-items-center text-lg\">\n          {text}\n        </div>\n      ))}\n      duration={4000}\n    />\n  )\n}\n\nexport { SlideStepperShadcnDemo }\n",
+      "type": "registry:component",
+      "target": "components/slide-stepper/slide-stepper-shadcn-demo.tsx"
+    }
+  ],
+  "type": "registry:component"
+}

@@ -8,22 +8,37 @@
 // Framework-agnostic vanilla DOM — no dependencies, no build step, works anywhere. A thin
 // React wrapper (<ScrollRail> + useActiveStop) lives in scroll-rail-react.tsx.
 //
+// `observeActive()` is the headless engine underneath both: like the other engines in this
+// registry, it exposes `getState()` + `subscribe()` so more than one consumer (a synced
+// table of contents, analytics) can listen without tearing the observer down and recreating
+// it. `onActiveChange` remains a convenience — sugar for a `subscribe()` call made at
+// construction — for the common single-listener case.
+//
 // ── Theming ────────────────────────────────────────────────────────────────────────────
 // Styles reference CSS custom properties with sensible fallbacks, so it reads correctly in
 // light and dark out of the box: ticks inherit the surrounding text color, and the preview
 // card uses the `Canvas`/`CanvasText` system colors. Override any of these on the rail host
 // (or any ancestor):
 //   --rail-tick          tick color                 (default: currentColor)
-//   --rail-accent        active-tick color          (default: #3b82f6)
+//   --rail-accent        active-tick color          (default: DEFAULT_ACCENT_COLOR, below)
 //   --rail-card-bg       preview card background     (default: Canvas)
 //   --rail-card-fg       preview card text          (default: CanvasText)
 //   --rail-card-border   preview card border color  (default: 20% of text color)
-//   --rail-card-width    preview card width         (default: 234px)
+//   --rail-card-width    preview card width         (default: DEFAULT_CARD_WIDTH, below)
 //
 // ── Positioning ────────────────────────────────────────────────────────────────────────
 // The rail element is `position: absolute`, pinned to the chosen edge and spanning the
 // height of its nearest positioned ancestor. Give the element you append it into (usually
 // the box wrapping your scroll container) `position: relative`.
+
+/** Default `activationOffset`, in px — see `ObserveActiveOptions.activationOffset`. */
+const DEFAULT_ACTIVATION_OFFSET = 96
+/** Default `previewChars` — see `HeadingItemsOptions.previewChars`. */
+const DEFAULT_PREVIEW_CHARS = 150
+/** Fallback for `--rail-accent` — see the theming doc above. */
+const DEFAULT_ACCENT_COLOR = '#3b82f6'
+/** Fallback for `--rail-card-width` — see the theming doc above. */
+const DEFAULT_CARD_WIDTH = '234px'
 
 /** One stop on the rail. */
 export interface ScrollRailItem {
@@ -48,9 +63,17 @@ export interface ObserveActiveOptions {
   /** The scrolling element the stops live inside. */
   scrollContainer: HTMLElement
   items: ScrollRailItem[]
-  /** A stop is active once its top is within this many px of the container top. Default 96. */
+  /** A stop is active once its top is within this many px of the container top.
+   *  Default `DEFAULT_ACTIVATION_OFFSET`. */
   activationOffset?: number
-  onActiveChange: (id: string | null) => void
+  /** Called whenever the active stop changes. Sugar for a `subscribe()` call made once at
+   *  construction — for a second listener, call `subscribe()` yourself instead. */
+  onActiveChange?: (id: string | null) => void
+}
+
+/** The observer's state, as reported to `subscribe()`. */
+export interface ActiveObserverState {
+  activeId: string | null
 }
 
 export interface ActiveObserver {
@@ -58,6 +81,10 @@ export interface ActiveObserver {
   refresh(): void
   setItems(items: ScrollRailItem[]): void
   getActiveId(): string | null
+  getState(): ActiveObserverState
+  /** Subscribe to active-stop changes; returns unsubscribe. Fires on every change, in
+   *  addition to (not instead of) `onActiveChange`. */
+  subscribe(fn: (state: ActiveObserverState) => void): () => void
   destroy(): void
 }
 
@@ -68,9 +95,21 @@ export interface ActiveObserver {
  * the React `useActiveStop` hook.
  */
 export function observeActive(opts: ObserveActiveOptions): ActiveObserver {
-  const activationOffset = opts.activationOffset ?? 96
+  const activationOffset = opts.activationOffset ?? DEFAULT_ACTIVATION_OFFSET
   let items = opts.items
   let activeId: string | null = null
+  const subs = new Set<(state: ActiveObserverState) => void>()
+  if (opts.onActiveChange) {
+    const onActiveChange = opts.onActiveChange
+    subs.add((s) => onActiveChange(s.activeId))
+  }
+
+  const getState = (): ActiveObserverState => ({ activeId })
+
+  const notify = () => {
+    const s = getState()
+    subs.forEach((fn) => fn(s))
+  }
 
   const compute = (): string | null => {
     if (!items.length) return null
@@ -86,7 +125,7 @@ export function observeActive(opts: ObserveActiveOptions): ActiveObserver {
     const next = compute()
     if (next !== activeId) {
       activeId = next
-      opts.onActiveChange(activeId)
+      notify()
     }
   }
 
@@ -102,9 +141,15 @@ export function observeActive(opts: ObserveActiveOptions): ActiveObserver {
     refresh,
     setItems(next) { items = next; refresh() },
     getActiveId: () => activeId,
+    getState,
+    subscribe(fn) {
+      subs.add(fn)
+      return () => subs.delete(fn)
+    },
     destroy() {
       opts.scrollContainer.removeEventListener('scroll', onScroll)
       if (raf && typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(raf)
+      subs.clear()
     },
   }
 }
@@ -334,7 +379,7 @@ export interface HeadingItemsOptions {
   selector?: string
   /** A selector to skip (e.g. a doc-title heading). */
   exclude?: string
-  /** Max characters of preview text pulled from each section. Default 150. */
+  /** Max characters of preview text pulled from each section. Default `DEFAULT_PREVIEW_CHARS`. */
   previewChars?: number
   /** Assign a slug id to headings missing one (needed for scroll targets + #links). Default true. */
   assignIds?: boolean
@@ -350,7 +395,7 @@ export function headingItems(container: HTMLElement, opts: HeadingItemsOptions =
 
 /** Rail stops from an array of heading elements you already hold. */
 export function itemsFromHeadings(headings: HTMLElement[], opts: HeadingItemsOptions = {}): ScrollRailItem[] {
-  const previewChars = opts.previewChars ?? 150
+  const previewChars = opts.previewChars ?? DEFAULT_PREVIEW_CHARS
   const assignIds = opts.assignIds ?? true
   const used = new Set<string>()
   headings.forEach((h) => { if (h.id) used.add(h.id) })
@@ -447,7 +492,7 @@ export function railStyles(): string {
    .is-hovered covers it and, unlike :hover, can't strand on scroll-under-cursor. */
 .scroll-rail-tick:focus-visible, .scroll-rail-tick.is-hovered { opacity: 1; outline: none; }
 /* A colored node keeps its own color when active; uncolored ones use the accent. */
-.scroll-rail-tick.is-active { width: 16px; opacity: 1; background: var(--tick, var(--rail-accent, #3b82f6)); }
+.scroll-rail-tick.is-active { width: 16px; opacity: 1; background: var(--tick, var(--rail-accent, ${DEFAULT_ACCENT_COLOR})); }
 /* …and the engaged/active tick rises above the scaled-up baseline. Engaging a tick always
    puts .is-hover on the rail too, so these rules cover the keyboard-focus path as well.
    (Same specificity as the level rules above — order matters.) */
@@ -456,7 +501,7 @@ export function railStyles(): string {
 .scroll-rail.is-hover .scroll-rail-tick.is-active { width: 17px; }
 .scroll-rail-card {
   position: absolute; z-index: 10; box-sizing: border-box;
-  width: var(--rail-card-width, 234px); max-width: var(--rail-card-width, 234px);
+  width: var(--rail-card-width, ${DEFAULT_CARD_WIDTH}); max-width: var(--rail-card-width, ${DEFAULT_CARD_WIDTH});
   background: var(--rail-card-bg, Canvas); color: var(--rail-card-fg, CanvasText);
   border: 1px solid var(--rail-card-border, color-mix(in srgb, currentColor 20%, transparent));
   border-radius: 10px; padding: 9px 12px;

@@ -1,5 +1,7 @@
 // workflow-button — a zero-dependency split button that drives a flow through stages.
 //
+// EXPERIMENTAL: the API is still settling and will change in breaking ways.
+//
 // One control, two jobs. The primary button performs the *default advance* — one click
 // moves the entity to the next stage (Draft → In review → Approved → Published). The
 // attached caret opens a menu of *every* stage, so you can jump anywhere the flow allows,
@@ -32,6 +34,11 @@
 // React apps that want *literal* shadcn parts (real <Button> + <DropdownMenu>, ReactNode
 // icons/children) should install `workflow-button-shadcn` instead — same flow semantics,
 // composed from shadcn primitives.
+//
+// State ownership: self-managed by default (`manageState: true` — the control tracks its
+// own `current`), because vanilla usage often has no host state to defer to. Both React
+// wrappers flip this to host-owned (`current` + `onMove` as the whole contract) since a
+// workflow stage is domain data that belongs in your app state, not a widget.
 
 /**
  * How the split button presents — shadcn's Button variants, plus 'primary' as an alias
@@ -769,7 +776,7 @@ export function workflowStyles(): string {
   min-width: max(100%, 220px); max-height: 320px; overflow-y: auto;
   padding: 4px; box-sizing: border-box;
   background: var(--_popover); color: var(--_popover-fg);
-  border: 1px solid var(--border, light-dark(#e4e4e7, #27272a));
+  border: 1px solid var(--_border);
   border-radius: var(--_radius-md);
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }

@@ -16,6 +16,10 @@
 // the timer semantics here are identical: JS setTimeout is the authoritative clock, CSS
 // transitions only display progress, and pausing is a set of reasons so a user pause
 // survives a hover-out.
+//
+// State ownership: `index` is an uncontrolled starting point, not a controlled prop — the
+// engine owns navigation, since timing/progress is ephemeral UI state that a controlled
+// value would fight on every render. Drive jumps through the returned engine instead.
 
 'use client'
 
@@ -27,10 +31,10 @@ import { cn } from '@/lib/utils'
 
 // ── Engine ─────────────────────────────────────────────────────────────────────────────
 
-export type PauseReason = 'user' | 'hover' | 'hidden' | 'offscreen' | 'gesture' | 'focus'
-export type StepChangeReason = 'advance' | 'next' | 'prev' | 'goto' | 'loop'
+type PauseReason = 'user' | 'hover' | 'hidden' | 'offscreen' | 'gesture' | 'focus'
+type StepChangeReason = 'advance' | 'next' | 'prev' | 'goto' | 'loop'
 
-export interface StepperEngineOptions {
+interface StepperEngineOptions {
   /** How many slides. Required; clamped to >= 1. */
   count: number
   /** Default per-slide duration in ms. Default 5000. */
@@ -48,7 +52,7 @@ export interface StepperEngineOptions {
   onPauseChange?: (paused: boolean, reasons: PauseReason[]) => void
 }
 
-export interface StepperEngineState {
+interface StepperEngineState {
   index: number
   count: number
   /** 0..1 through the current slide, computed on demand — never ticked. */
@@ -58,9 +62,11 @@ export interface StepperEngineState {
   done: boolean
 }
 
-export interface StepperEngine {
+interface StepperEngine {
   getState(): StepperEngineState
   durationFor(index: number): number
+  /** Start auto-advance. Idempotent; safe to call from every mounted consumer. */
+  start(): void
   subscribe(fn: (state: StepperEngineState) => void): () => void
   next(): void
   prev(): void
@@ -85,6 +91,7 @@ function createEngine(opts: StepperEngineOptions): StepperEngine {
   let done = false
   let elapsed = 0
   let runStart: number | null = null
+  let started = false
   let timer: ReturnType<typeof setTimeout> | undefined
   const reasons = new Set<PauseReason>()
   if (opts.startPaused) reasons.add('user')
@@ -115,7 +122,7 @@ function createEngine(opts: StepperEngineOptions): StepperEngine {
   }
   const armTimer = () => {
     clearTimer()
-    if (reasons.size > 0 || done) {
+    if (!started || reasons.size > 0 || done) {
       runStart = null
       return
     }
@@ -146,7 +153,7 @@ function createEngine(opts: StepperEngineOptions): StepperEngine {
   }
   const pause = (reason: PauseReason = 'user') => {
     if (reasons.has(reason)) return
-    const wasRunning = reasons.size === 0 && !done
+    const wasRunning = started && reasons.size === 0 && !done
     if (wasRunning && runStart != null) {
       elapsed += now() - runStart
       runStart = null
@@ -160,7 +167,7 @@ function createEngine(opts: StepperEngineOptions): StepperEngine {
     if (!reasons.delete(reason)) return
     if (reasons.size === 0) {
       armTimer()
-      opts.onPauseChange?.(false, [])
+      if (started) opts.onPauseChange?.(false, [])
     }
     notify()
   }
@@ -168,11 +175,13 @@ function createEngine(opts: StepperEngineOptions): StepperEngine {
   return {
     getState,
     durationFor,
+    start() {
+      if (started) return
+      started = true
+      armTimer()
+    },
     subscribe(fn) {
       subs.add(fn)
-      // The first observer starts a never-started clock (armTimer no-ops under pause/done;
-      // runStart is non-null whenever a run segment is in flight, so none is clobbered).
-      if (runStart == null) armTimer()
       return () => subs.delete(fn)
     },
     next() {
@@ -229,6 +238,7 @@ function createEngine(opts: StepperEngineOptions): StepperEngine {
     destroy() {
       clearTimer()
       runStart = null
+      started = false
       subs.clear()
     },
   }
@@ -236,9 +246,9 @@ function createEngine(opts: StepperEngineOptions): StepperEngine {
 
 // ── Hook ───────────────────────────────────────────────────────────────────────────────
 
-export interface UseSlideStepperOptions extends StepperEngineOptions {}
+interface UseSlideStepperOptions extends StepperEngineOptions {}
 
-export interface UseSlideStepperReturn extends StepperEngineState {
+interface UseSlideStepperReturn extends StepperEngineState {
   engine: StepperEngine
   next: () => void
   prev: () => void
@@ -250,7 +260,7 @@ export interface UseSlideStepperReturn extends StepperEngineState {
 
 /** Headless: an engine plus its live state. Share `engine` with <SlideStepper> and key your
  *  own content off `index` — one timer, one source of truth. */
-export function useSlideStepper(opts: UseSlideStepperOptions): UseSlideStepperReturn {
+function useSlideStepper(opts: UseSlideStepperOptions): UseSlideStepperReturn {
   const cb = useRef({ onChange: opts.onChange, onComplete: opts.onComplete, onPauseChange: opts.onPauseChange })
   cb.current = { onChange: opts.onChange, onComplete: opts.onComplete, onPauseChange: opts.onPauseChange }
 
@@ -270,9 +280,10 @@ export function useSlideStepper(opts: UseSlideStepperOptions): UseSlideStepperRe
   const [state, setState] = useState<StepperEngineState>(() => engine.getState())
 
   useEffect(() => {
-    // Subscribing arms the clock (construction is side-effect-free) — on first mount and
-    // again after a StrictMode unmount/remount cycle, whose cleanup below stopped it.
     const unsubscribe = engine.subscribe(setState)
+    // Construction is side-effect-free; start only after mount, and re-arm after the
+    // StrictMode cleanup below. Shared consumers may also call this; start is idempotent.
+    engine.start()
     return () => {
       unsubscribe()
       engine.destroy()
@@ -448,7 +459,7 @@ function useReducedMotion(): boolean {
 
 // ── Pill ───────────────────────────────────────────────────────────────────────────────
 
-export interface SlideStepperLabels {
+interface SlideStepperLabels {
   root?: string
   slide?: (index: number, count: number) => string
   pause?: string
@@ -466,7 +477,7 @@ const SIZES = {
 
 const GLIDE = 'cubic-bezier(0.22,1,0.36,1)'
 
-export interface SlideStepperProps {
+interface SlideStepperProps {
   /** Share the engine from useSlideStepper; omit to let the pill run its own. Ownership is
    *  fixed at mount — supply it from the first render. */
   engine?: StepperEngine
@@ -497,7 +508,7 @@ export interface SlideStepperProps {
 }
 
 /** The pill: dots, stretching progress bar, tape-counter clipping, pause circle. */
-export function SlideStepper({
+function SlideStepper({
   engine: engineProp,
   count = 1,
   duration,
@@ -544,9 +555,8 @@ export function SlideStepper({
   const [state, setState] = useState<StepperEngineState>(() => engine.getState())
   useEffect(() => {
     setState(engine.getState())
-    // Subscribing arms an owned engine's clock (construction is side-effect-free) — on
-    // first mount and again after a StrictMode unmount/remount cycle.
     const unsubscribe = engine.subscribe(setState)
+    engine.start()
     return () => {
       unsubscribe()
       if (ownsEngine) engine.destroy()
@@ -650,10 +660,13 @@ export function SlideStepper({
 
   return (
     <div
+      data-slot="slide-stepper"
+      data-orientation={orientation}
       ref={rootRef}
       className={cn('inline-flex items-center gap-2', !horizontal && 'flex-col', className)}
     >
       <div
+        data-slot="slide-stepper-pill"
         ref={pillRef}
         onClick={onPillClick}
         className={cn('flex items-center rounded-full bg-muted', !horizontal && 'flex-col')}
@@ -663,8 +676,9 @@ export function SlideStepper({
             : { width: g.hit, padding: `${g.pad}px 0`, touchAction: 'pan-x' }
         }
       >
-        <div className="overflow-hidden" style={horizontal ? { width: win } : { height: win }}>
+        <div data-slot="slide-stepper-window" className="overflow-hidden" style={horizontal ? { width: win } : { height: win }}>
           <div
+            data-slot="slide-stepper-strip"
             role="tablist"
             aria-orientation={orientation}
             aria-label={labels?.root ?? 'Slide progress'}
@@ -681,6 +695,9 @@ export function SlideStepper({
               return (
                 <button
                   key={i}
+                  data-slot="slide-stepper-dot"
+                  data-active={active || undefined}
+                  data-done={i < state.index || undefined}
                   ref={(el) => {
                     dotRefs.current[i] = el
                   }}
@@ -699,9 +716,11 @@ export function SlideStepper({
                     transition: reduced ? undefined : `width 250ms ${GLIDE}, height 250ms ${GLIDE}`,
                   }}
                 >
-                  {/* The focus ring hugs the visible track, not the invisible slot button
-                      (same as the vanilla tier's outline on the dot track). */}
+                  {/* A soft ring reads smeared on a target this small, so this hugs the
+                      visible track with a crisp outline instead of the canonical
+                      focus-visible ring (same deviation as the vanilla tier's dot track). */}
                   <span
+                    data-slot="slide-stepper-dot-track"
                     className={cn(
                       'relative block overflow-hidden rounded-full group-focus-visible:outline group-focus-visible:outline-2 group-focus-visible:outline-offset-2 group-focus-visible:outline-ring',
                       active ? 'bg-border opacity-100' : i < state.index ? 'bg-muted-foreground opacity-80' : 'bg-muted-foreground opacity-55',
@@ -713,6 +732,7 @@ export function SlideStepper({
                     }}
                   >
                     <span
+                      data-slot="slide-stepper-dot-fill"
                       ref={(el) => {
                         fillRefs.current[i] = el
                       }}
@@ -733,6 +753,8 @@ export function SlideStepper({
       </div>
       {showPause ? (
         <Button
+          data-slot="slide-stepper-pause"
+          data-kind={kind}
           type="button"
           variant="ghost"
           size="icon"
@@ -752,7 +774,7 @@ export function SlideStepper({
 
 // ── Carousel ───────────────────────────────────────────────────────────────────────────
 
-export interface SlideStepperCarouselProps
+interface SlideStepperCarouselProps
   extends Omit<SlideStepperProps, 'engine' | 'slideIds'> {
   /** The slides: an array of nodes, or a factory for lazy content (rendered once a slide
    *  comes within one step of showing, then kept mounted). */
@@ -768,7 +790,7 @@ export interface SlideStepperCarouselProps
 }
 
 /** The full carousel: crossfading viewport + pill sharing one engine, zero wiring. */
-export function SlideStepperCarousel({
+function SlideStepperCarousel({
   slides,
   count: countProp,
   duration,
@@ -796,6 +818,9 @@ export function SlideStepperCarousel({
 }: SlideStepperCarouselProps) {
   const lazy = typeof slides === 'function'
   const count = lazy ? Math.max(1, Math.floor(countProp ?? 1)) : slides.length
+  if (!lazy && count === 0) {
+    throw new Error('SlideStepperCarousel: `slides` must contain at least one slide')
+  }
   const stepper = useSlideStepper({ count, duration, durations, loop, startPaused, index: initialIndex, onChange, onComplete, onPauseChange })
   const { engine, index } = stepper
 
@@ -849,6 +874,7 @@ export function SlideStepperCarousel({
 
   return (
     <div
+      data-slot="slide-stepper-carousel"
       ref={rootRef}
       role="region"
       aria-roledescription="carousel"
@@ -862,6 +888,7 @@ export function SlideStepperCarousel({
       )}
     >
       <div
+        data-slot="slide-stepper-carousel-viewport"
         ref={viewportRef}
         className="grid"
         style={{ touchAction: orientation === 'vertical' ? 'pan-x' : 'pan-y' }}
@@ -869,6 +896,8 @@ export function SlideStepperCarousel({
         {Array.from({ length: count }, (_, i) => (
           <div
             key={i}
+            data-slot="slide-stepper-carousel-slide"
+            data-active={i === index || undefined}
             id={ids[i]}
             ref={(el) => {
               slideRefs.current[i] = el
@@ -901,4 +930,20 @@ export function SlideStepperCarousel({
       />
     </div>
   )
+}
+
+export {
+  useSlideStepper,
+  SlideStepper,
+  SlideStepperCarousel,
+  type PauseReason,
+  type StepChangeReason,
+  type StepperEngineOptions,
+  type StepperEngineState,
+  type StepperEngine,
+  type UseSlideStepperOptions,
+  type UseSlideStepperReturn,
+  type SlideStepperLabels,
+  type SlideStepperProps,
+  type SlideStepperCarouselProps,
 }

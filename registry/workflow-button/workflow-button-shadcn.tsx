@@ -1,10 +1,17 @@
 // workflow-button-shadcn — the workflow split button composed from shadcn primitives.
 //
+// EXPERIMENTAL: the API is still settling and will change in breaking ways.
+//
 // Same flow semantics as the vanilla `workflow-button` (primary advances the happy path
 // and re-labels itself; the caret menu jumps anywhere the flow allows), but built from
 // your app's actual <Button> and <DropdownMenu> — so it *is* a shadcn button: identical
-// variants, sizes, theming, focus rings, dark mode. Icons, menu rows, and custom primary
-// content are plain ReactNode.
+// variants, sizes, theming, focus rings, dark mode. Menu rows and custom primary content
+// are plain ReactNode; a step's `icon` is a component (like shadcn's own icon props), so
+// the affordance owns instantiation and sizing instead of trusting a pre-built element.
+//
+// State ownership: `current` + `onMove` is the whole contract — a workflow stage is host-
+// app domain data (it lives in your database, not in a widget), so this wrapper is always
+// controlled. The vanilla core's `manageState` exists for zero-framework, self-managed use.
 //
 // The flow is data: steps with optional `to` transition lists (the state-machine model —
 // `to[0]` is the happy path, `to: []` is terminal), an app `context` (viewer role,
@@ -19,26 +26,24 @@
 'use client'
 
 import { CheckIcon, ChevronDownIcon } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
-import type { ReactNode } from 'react'
+import type { VariantProps } from 'class-variance-authority'
+import type { ComponentType, ReactNode } from 'react'
+
+type ButtonVariant = NonNullable<VariantProps<typeof buttonVariants>['variant']>
 
 /** shadcn Button variants usable by the split control, plus 'primary' as an alias for
  *  'default'. ('link' is deliberately unsupported — a link-styled split button isn't a
  *  coherent control.) */
-export type WorkflowVariant =
-  | 'default'
-  | 'primary'
-  | 'secondary'
-  | 'outline'
-  | 'ghost'
-  | 'destructive'
+type WorkflowVariant = Exclude<ButtonVariant, 'link'> | 'primary'
 
 type CanonicalVariant = Exclude<WorkflowVariant, 'primary'>
 
@@ -46,7 +51,7 @@ const canonical = (v: WorkflowVariant): CanonicalVariant =>
   v === 'primary' ? 'default' : v
 
 /** One stage in the flow. */
-export interface WorkflowStep {
+interface WorkflowStep {
   /** Stable identity — what `current` points at and `onMove` reports. */
   id: string
   /** Menu label, and the primary's label when this step is the advance target
@@ -63,8 +68,9 @@ export interface WorkflowStep {
   /** Instance annotation — who did this step, when ("Astrid · 2d"). When present it
    *  REPLACES `description` as the line under the label. Richer → `renderItem`. */
   meta?: string
-  /** Optional leading icon (menu item + primary when targeted). Any ReactNode. */
-  icon?: ReactNode
+  /** Optional leading icon (menu item + primary when targeted). A component, not an
+   *  element — the affordance instantiates and sizes it (matches shadcn's icon rules). */
+  icon?: ComponentType<{ className?: string }>
   /** Optional status color — a dot shown when no `icon` is given. */
   color?: string
   /** Hard-disable jumping to this step, regardless of `canMoveTo`. */
@@ -78,14 +84,14 @@ export interface WorkflowStep {
 }
 
 /** Resolve the advance target from a step. Return null for a terminal stage. */
-export type NextResolver<TCtx = unknown> = (
+type NextResolver<TCtx = unknown> = (
   current: WorkflowStep,
   steps: WorkflowStep[],
   context: TCtx | undefined,
 ) => string | null
 
 /** May we move `from` → `to`? Governs the primary's enablement and each menu item. */
-export type MovePredicate<TCtx = unknown> = (
+type MovePredicate<TCtx = unknown> = (
   to: WorkflowStep,
   from: WorkflowStep,
   steps: WorkflowStep[],
@@ -93,26 +99,26 @@ export type MovePredicate<TCtx = unknown> = (
 ) => boolean
 
 /** Advance target by array order: the next step, or null at the end. */
-export const nextInOrder: NextResolver = (current, steps) => {
+const nextInOrder: NextResolver = (current, steps) => {
   const i = steps.findIndex((s) => s.id === current.id)
   return i >= 0 && i < steps.length - 1 ? steps[i + 1].id : null
 }
 
 /** The built-in `next`: the step's `to[0]` (happy path) when declared, else array order. */
-export const defaultNext: NextResolver = (current, steps, context) => {
+const defaultNext: NextResolver = (current, steps, context) => {
   if (current.to) return current.to[0] ?? null
   return nextInOrder(current, steps, context)
 }
 
 /** The built-in `canMoveTo`: `to`-membership when declared, else any non-disabled step. */
-export const defaultCanMoveTo: MovePredicate = (to, from) => {
+const defaultCanMoveTo: MovePredicate = (to, from) => {
   if (to.disabled) return false
   if (from.to) return from.to.includes(to.id)
   return true
 }
 
 /** Array-order DAG flows: only steps after the current one are reachable — never back. */
-export const forwardOnly: MovePredicate = (to, from, steps) => {
+const forwardOnly: MovePredicate = (to, from, steps) => {
   if (to.disabled) return false
   const fromI = steps.findIndex((s) => s.id === from.id)
   const toI = steps.findIndex((s) => s.id === to.id)
@@ -131,7 +137,7 @@ const DIVIDER: Record<CanonicalVariant, string> = {
   ghost: 'border-l border-border',
 }
 
-export interface WorkflowButtonProps<TCtx = unknown> {
+interface WorkflowButtonProps<TCtx = unknown> {
   steps: WorkflowStep[]
   /** Id of the current stage (controlled — reflect `onMove` back into this prop). */
   current: string
@@ -178,7 +184,7 @@ export interface WorkflowButtonProps<TCtx = unknown> {
  * path; caret = <DropdownMenu> of every stage, disabled per `canMoveTo`, hidden entirely
  * when nothing is reachable. Fully controlled.
  */
-export function WorkflowButton<TCtx = unknown>({
+function WorkflowButton<TCtx = unknown>({
   steps,
   current,
   onMove,
@@ -222,6 +228,7 @@ export function WorkflowButton<TCtx = unknown>({
 
   return (
     <div
+      data-slot="workflow-button"
       role="group"
       className={cn(
         'inline-flex rounded-md',
@@ -260,7 +267,6 @@ export function WorkflowButton<TCtx = unknown>({
               type="button"
               variant={resolved}
               size={TRIGGER_SIZE[size]}
-              aria-label={menuLabel}
               className={cn(
                 'rounded-l-none shadow-none focus-visible:z-10',
                 'data-[state=open]:[&_svg]:rotate-180',
@@ -268,43 +274,46 @@ export function WorkflowButton<TCtx = unknown>({
               )}
             >
               <ChevronDownIcon className="transition-transform duration-200" />
+              <span className="sr-only">{menuLabel}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="min-w-56">
-            {steps.map((step) => {
-              const isCurrent = step.id === current
-              const reachable = canMoveTo(step, cur, steps, context)
-              return (
-                <DropdownMenuItem
-                  key={step.id}
-                  disabled={!reachable && !isCurrent}
-                  aria-current={isCurrent || undefined}
-                  onSelect={() => {
-                    if (!isCurrent && reachable) onMove(step.id, cur.id)
-                  }}
-                >
-                  {renderItem ? (
-                    renderItem(step, { isCurrent, reachable: reachable && !isCurrent })
-                  ) : (
-                    <>
-                      <StepAffordance step={step} />
-                      <span className="flex min-w-0 flex-1 flex-col">
-                        <span className={cn(isCurrent && 'font-medium')}>
-                          {step.label}
-                        </span>
-                        {/* Attribution (what happened) beats the static hint. */}
-                        {(step.meta ?? step.description) ? (
-                          <span className="text-muted-foreground text-xs">
-                            {step.meta ?? step.description}
+            <DropdownMenuGroup>
+              {steps.map((step) => {
+                const isCurrent = step.id === current
+                const reachable = canMoveTo(step, cur, steps, context)
+                return (
+                  <DropdownMenuItem
+                    key={step.id}
+                    disabled={!reachable && !isCurrent}
+                    aria-current={isCurrent || undefined}
+                    onSelect={() => {
+                      if (!isCurrent && reachable) onMove(step.id, cur.id)
+                    }}
+                  >
+                    {renderItem ? (
+                      renderItem(step, { isCurrent, reachable: reachable && !isCurrent })
+                    ) : (
+                      <>
+                        <StepAffordance step={step} />
+                        <span className="flex min-w-0 flex-1 flex-col">
+                          <span className={cn(isCurrent && 'font-medium')}>
+                            {step.label}
                           </span>
-                        ) : null}
-                      </span>
-                    </>
-                  )}
-                  {isCurrent ? <CheckIcon className="ml-2" /> : null}
-                </DropdownMenuItem>
-              )
-            })}
+                          {/* Attribution (what happened) beats the static hint. */}
+                          {(step.meta ?? step.description) ? (
+                            <span className="text-muted-foreground text-xs">
+                              {step.meta ?? step.description}
+                            </span>
+                          ) : null}
+                        </span>
+                      </>
+                    )}
+                    {isCurrent ? <CheckIcon className="ml-2" /> : null}
+                  </DropdownMenuItem>
+                )
+              })}
+            </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
       ) : null}
@@ -314,10 +323,22 @@ export function WorkflowButton<TCtx = unknown>({
 
 /** A step's leading visual: its icon, else a status-color dot, else nothing. */
 function StepAffordance({ step }: { step: WorkflowStep }) {
-  if (step.icon) return <span aria-hidden="true">{step.icon}</span>
+  const Icon = step.icon
+  if (Icon) {
+    return (
+      <span
+        data-slot="workflow-button-affordance"
+        aria-hidden="true"
+        className="[&_svg:not([class*='size-'])]:size-4"
+      >
+        <Icon />
+      </span>
+    )
+  }
   if (!step.color) return null
   return (
     <span
+      data-slot="workflow-button-affordance"
       aria-hidden="true"
       className="size-2 shrink-0 rounded-full"
       style={{
@@ -328,7 +349,7 @@ function StepAffordance({ step }: { step: WorkflowStep }) {
   )
 }
 
-export interface UseWorkflowOptions<TCtx = unknown> {
+interface UseWorkflowOptions<TCtx = unknown> {
   steps: WorkflowStep[]
   current: string
   context?: TCtx
@@ -337,7 +358,7 @@ export interface UseWorkflowOptions<TCtx = unknown> {
 }
 
 /** Headless flow math — build your own control (stepper, command entry, shortcut) on top. */
-export function useWorkflow<TCtx = unknown>({
+function useWorkflow<TCtx = unknown>({
   steps,
   current,
   context,
@@ -365,4 +386,19 @@ export function useWorkflow<TCtx = unknown>({
     anyReachable:
       !!cur && steps.some((s) => s.id !== current && canMoveTo(s, cur, steps, context)),
   }
+}
+
+export {
+  defaultCanMoveTo,
+  defaultNext,
+  forwardOnly,
+  nextInOrder,
+  useWorkflow,
+  WorkflowButton,
+  type MovePredicate,
+  type NextResolver,
+  type UseWorkflowOptions,
+  type WorkflowButtonProps,
+  type WorkflowStep,
+  type WorkflowVariant,
 }

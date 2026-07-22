@@ -1,3 +1,5 @@
+'use client'
+
 // scroll-rail-react — a thin React wrapper over the framework-agnostic scroll-rail core.
 //
 //   <ScrollRail scrollRef={ref} items={items} />   renders the rail
@@ -14,10 +16,8 @@ import {
   type ScrollRailItem,
 } from './scroll-rail'
 
-export type { ScrollRailItem } from './scroll-rail'
-
 /** Like ScrollRailItem, but `target` may be an element id resolved inside the container. */
-export interface ReactScrollRailItem extends Omit<ScrollRailItem, 'target'> {
+interface ReactScrollRailItem extends Omit<ScrollRailItem, 'target'> {
   target: HTMLElement | string
 }
 
@@ -38,7 +38,7 @@ function cssEscape(id: string): string {
   return c?.escape ? c.escape(id) : id.replace(/[^a-zA-Z0-9_-]/g, '\\$&')
 }
 
-export interface ScrollRailProps {
+interface ScrollRailProps {
   /** Ref to the scrolling element the stops live inside. */
   scrollRef: RefObject<HTMLElement | null>
   items: ReactScrollRailItem[]
@@ -55,7 +55,7 @@ export interface ScrollRailProps {
  * The returned wrapper is `display: contents`, so it adds no layout box of its own; the
  * rail (absolutely positioned) resolves against your relative ancestor.
  */
-export function ScrollRail({
+function ScrollRail({
   scrollRef, items, position, activationOffset, onActiveChange, className,
 }: ScrollRailProps) {
   const hostRef = useRef<HTMLDivElement>(null)
@@ -97,7 +97,7 @@ export function ScrollRail({
   return <div ref={hostRef} style={{ display: 'contents' }} />
 }
 
-export interface UseActiveStopOptions {
+interface UseActiveStopOptions {
   scrollRef: RefObject<HTMLElement | null>
   items: ReactScrollRailItem[]
   activationOffset?: number
@@ -107,7 +107,7 @@ export interface UseActiveStopOptions {
  * Headless: track which stop is active as the container scrolls, returning its id (or null).
  * The shadcn `useMessageScrollerVisibility` parallel — bring your own UI.
  */
-export function useActiveStop({ scrollRef, items, activationOffset }: UseActiveStopOptions): string | null {
+function useActiveStop({ scrollRef, items, activationOffset }: UseActiveStopOptions): string | null {
   const [activeId, setActiveId] = useState<string | null>(null)
   useEffect(() => {
     const scroll = scrollRef.current
@@ -122,4 +122,13 @@ export function useActiveStop({ scrollRef, items, activationOffset }: UseActiveS
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scrollRef, items, activationOffset])
   return activeId
+}
+
+export {
+  ScrollRail,
+  useActiveStop,
+  type ScrollRailItem,
+  type ReactScrollRailItem,
+  type ScrollRailProps,
+  type UseActiveStopOptions,
 }

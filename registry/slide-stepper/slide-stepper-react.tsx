@@ -8,6 +8,12 @@
 // control and shares it. Key your own slide content off the hook's `index` and both stay in
 // sync by construction. The zero-wiring <SlideStepperCarousel> lives in
 // slide-stepper-carousel-react.tsx.
+//
+// State ownership: `index` is an uncontrolled starting point, not a controlled prop — the
+// engine owns navigation, since timing/progress is ephemeral UI state that a controlled
+// value would fight on every render. Drive jumps through the returned engine instead.
+
+'use client'
 
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -22,18 +28,9 @@ import {
   type StepperEngineState,
 } from './slide-stepper'
 
-export type {
-  PauseReason,
-  SlideStepperLabels,
-  StepChangeReason,
-  StepperEngine,
-  StepperEngineOptions,
-  StepperEngineState,
-} from './slide-stepper'
+interface UseSlideStepperOptions extends StepperEngineOptions {}
 
-export interface UseSlideStepperOptions extends StepperEngineOptions {}
-
-export interface UseSlideStepperReturn extends StepperEngineState {
+interface UseSlideStepperReturn extends StepperEngineState {
   /** Hand this to <SlideStepper engine={…}> (and anything else) to share the one timer. */
   engine: StepperEngine
   next: () => void
@@ -50,7 +47,7 @@ export interface UseSlideStepperReturn extends StepperEngineState {
  * so inline closures are fine; count/duration/durations/loop patch into the running engine
  * without restarting the current slide (keep `durations` referentially stable — memoize it).
  */
-export function useSlideStepper(opts: UseSlideStepperOptions): UseSlideStepperReturn {
+function useSlideStepper(opts: UseSlideStepperOptions): UseSlideStepperReturn {
   const cb = useRef({ onChange: opts.onChange, onComplete: opts.onComplete, onPauseChange: opts.onPauseChange })
   cb.current.onChange = opts.onChange
   cb.current.onComplete = opts.onComplete
@@ -72,9 +69,10 @@ export function useSlideStepper(opts: UseSlideStepperOptions): UseSlideStepperRe
   const [state, setState] = useState<StepperEngineState>(() => engine.getState())
 
   useEffect(() => {
-    // Subscribing arms the clock (construction is side-effect-free) — on first mount and
-    // again after a StrictMode unmount/remount cycle, whose cleanup below stopped it.
     const unsubscribe = engine.subscribe(setState)
+    // Construction is side-effect-free; start only after mount. Idempotence lets a shared
+    // pill call start too, and re-arms after the StrictMode cleanup below.
+    engine.start()
     return () => {
       unsubscribe()
       engine.destroy()
@@ -98,7 +96,7 @@ export function useSlideStepper(opts: UseSlideStepperOptions): UseSlideStepperRe
   }
 }
 
-export interface SlideStepperProps {
+interface SlideStepperProps {
   /** Share the engine from useSlideStepper. When set, the engine props below (count,
    *  duration(s), loop, startPaused, index, callbacks) are ignored — the hook owns them. */
   engine?: StepperEngine
@@ -133,7 +131,7 @@ export interface SlideStepperProps {
  * own. Re-created only when the engine identity or the auto-pause wiring changes; every
  * other prop syncs into the running control.
  */
-export function SlideStepper({
+function SlideStepper({
   engine,
   count,
   duration,
@@ -208,4 +206,18 @@ export function SlideStepper({
   }, [count, duration, durations, loop, orientation, clip, showPause, size, slideIds, labels, className])
 
   return <span ref={hostRef} style={{ display: 'contents' }} />
+}
+
+export {
+  useSlideStepper,
+  SlideStepper,
+  type UseSlideStepperOptions,
+  type UseSlideStepperReturn,
+  type SlideStepperProps,
+  type PauseReason,
+  type SlideStepperLabels,
+  type StepChangeReason,
+  type StepperEngine,
+  type StepperEngineOptions,
+  type StepperEngineState,
 }
